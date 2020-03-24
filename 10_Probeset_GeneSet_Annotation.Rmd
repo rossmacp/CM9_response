@@ -1,0 +1,486 @@
+---
+title: "Probeset Annotation with Gene Lists"
+output: github_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+
+##_ Set knitr root directory to correspond to project working directory 
+##_  setting based on structure with code in <project dir>/code
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+
+## Procedure
+
+1. Load Brain Array Probeset table
+1. Remove Geneset annotation
+1. Re-Annotate with  Gene Sets of interest: Column prefix = Geneset_
+1. Save Brain Array Probeset table to use as input
+
+## Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(knitr)
+
+```
+
+## Data Sources
+
+```{r loaddata}
+
+# Affymetrix probeset to Gene annotation
+#load the file with signature scores
+#strip the scores so they don't get added in duplicate when script rerun
+probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
+
+#readr will deliberately wipe the data from a column if the first 1000 rows are NA
+#because it now uses 1000 rows to guess type = logical, when it isn't.
+#so have to make read_tsv check all 18571 rows for column type
+probeset <- read_tsv(probeset_file,guess_max = 18571)
+probeset <- select(probeset,
+				   one_of(c("Probeset" ,
+				   		"ENTREZ" ,
+				   		"LocusLink",
+				   		"Symbol",
+				   		"IRIS_Most_Specific")))
+
+
+
+# ELVIDGE_HIF1A_TARGETS_DN from MSIG DB
+elvidge_file <- paste(data_dir, "ELVIDGE_HIF1A_TARGETS_DN.txt", sep = "/")
+elvidge <- read_tsv(elvidge_file)
+
+# ccrcc70 genes from Beuselinck et al
+ccrcc_file <- paste(data_dir, "70gene_Probesets.txt", sep = "/")
+ccrcc <- as.data.frame (read_tsv(ccrcc_file))
+
+# Furhrman genes
+fuhrman_file <- paste(data_dir, "Fuhrman_TableS2.txt", sep = "/")
+fuhrman <- as.data.frame (read_tsv(fuhrman_file))
+
+#Ascierto genes
+ascierto_file <- paste(data_dir, "Geneset_Ascierto.txt", sep = "/")
+ascierto <- as.data.frame (read_tsv(ascierto_file))
+
+#McDermott Angiogenesis genes
+angio_file <- paste(data_dir, "Geneset_Angio.txt", sep = "/")
+angio <- as.data.frame(read_tsv(angio_file))
+
+#McDermott Myeloid genes
+myeloid_file <- paste(data_dir, "Geneset_Myeloid.txt", sep = "/")
+myeloid <- as.data.frame(read_tsv(myeloid_file))
+
+#McDermott Teffector genes
+teff_file <- paste(data_dir, "Geneset_Teff.txt", sep = "/")
+teff <- as.data.frame(read_tsv(teff_file))
+
+#Merck 18 gene signature
+merck18_file <- paste(data_dir, "Geneset_Merck18.txt", sep = "/")
+merck18 <- as.data.frame(read_tsv(merck18_file))
+
+# Rig1-like receptor set
+rig1_file <- paste(data_dir, "Geneset_RIG1likePathway.txt", sep = "/")
+rig1 <- as.data.frame(read_tsv(rig1_file))
+
+# BMS 93 gene set from 311 baseline predictors
+cm009_file <- paste(results_dir, "GEP_Table_BiopsyScreen_ResponseEffect_311prbs.txt", sep = "/")
+cm009 <- as.data.frame(read_tsv(cm009_file))
+
+#Corvus adenosine gene lists from ESMO and personal communication
+adenosine_file <-  paste(data_dir, "Geneset_Corvus_adenosine_3list.txt", sep = "/")
+adenosine <- as.data.frame(read_tsv(adenosine_file))
+
+# Gene Set: HALLMARK_INTERFERON_ALPHA_RESPONSE
+ifna_file <-  paste(data_dir, "Geneset_HALLMARK_IFNA_RESPONSE.txt", sep = "/")
+ifna <- as.data.frame(read_tsv(ifna_file))
+
+
+# Gene Set: HALLMARK_INTERFERON_GAMMA_RESPONSE
+ifng_file <-  paste(data_dir, "Geneset_HALLMARK_IFNG_RESPONSE.txt", sep = "/")
+ifng <- as.data.frame(read_tsv(ifng_file))
+
+#EMT stromal 8 genes
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6115401/
+emt_file <-  paste(data_dir, "EMT_8gene.txt", sep = "/")
+emt <- as.data.frame(read_tsv(emt_file))
+
+#Javelin 26gene
+#Choueiri_ASCO2019
+javelin_file <-  paste(data_dir, "Javelin26gene.txt", sep = "/")
+javelin <- as.data.frame(read_tsv(javelin_file))
+
+
+```
+
+Load lists for:
+
+1. Geneset_Tcell,
+1. Geneset_ELVIDGE_HIF1A_TARGETS_DN,
+1. Geneset_ccRCC,
+1. Geneset_Fuhrman,
+1. Geneset_Ascierto,
+1. Geneset_IMmotion150,
+1. Geneset_Merck18,
+1. Geneset_RIG1,
+1. Geneset_CM009,
+1. Geneset_Adenosine,
+1. Geneset_EMTstroma,
+1. Geneset_Javelin,
+1. Geneset_HALLMARK
+
+## Tcell receptor
+
+Transcripts for CD3/TCRa/b
+
+```{r tcr}
+
+# Probesets for T cell receptor component transcripts
+tcellprobesets <- c("915_at", "916_at", "917_at", "919_at","28638_at", "28755_at")
+
+probeset$Geneset_Tcell <- NA
+probeset$Geneset_Tcell[probeset$Probeset %in% tcellprobesets] <- "Tcell_Receptor"
+```
+
+## ELVIDGE_HIF1A_TARGETS_DN
+
+From MSigDB
+
+```{r elvidge}
+
+elvidge_entrez <- elvidge$Entrez
+
+probeset$Geneset_ELVIDGE_HIF1A_TARGETS_DN <- NA
+probeset$Geneset_ELVIDGE_HIF1A_TARGETS_DN[probeset$ENTREZ %in% elvidge_entrez] <- "91_DN"
+
+```
+
+## ccrcc predictors
+
+Merge in the 63 of 70 ccrcc genes that can also be found in Hugene probesets
+
+```{r ccrcc}
+# commented out after adding
+
+ccrcc <- dplyr::select(ccrcc, one_of(c("Probeset.BrA","ccRCC")))
+
+probeset <- left_join(probeset, ccrcc,
+					  by = c("Probeset" = "Probeset.BrA"))
+
+probeset <- rename(probeset, "Geneset_ccRCC" = "ccRCC")
+
+```
+
+## Fuhrman grade
+
+Merge in Table S2 from Thibodeau 
+
+10.1016/j.urolonc.2015.11.001
+
+```{r fuhrman}
+# commented out after adding
+#
+fuhrman <- select(fuhrman, one_of(c("LocusLink", "Fuhrman")))
+
+probeset <- left_join(probeset, fuhrman,
+					  by = c("LocusLink" = "LocusLink"))
+
+probeset <- rename(probeset, "Geneset_Fuhrman" = "Fuhrman")
+
+```
+
+## Ascierto et al
+
+10.1158/2326-6066.CIR-16-0072
+
+Actually uses original 224 genes plus extra genes they added to the qPCR assays.
+So not one table from the paper.
+202 probesets final.
+
+```{r ascierto}
+
+# commented out after adding
+
+ascierto <- select(ascierto, one_of(c("Probeset", "Class")))
+ 
+probeset <- left_join(probeset, ascierto, 
+ 				  by = c("Probeset" = "Probeset"))
+probeset <- rename(probeset, "Geneset_Ascierto" = "Class")
+```
+
+## McDermott Genesets
+
+3 genesets from 
+
++ McDermott et al, Nature Medicine volume 24, pages 749–757 (2018)
++ https://doi.org/10.1038/s41591-018-0053-3
++ Angio: VEGFA, KDR, ESM1, PECAM1, ANGPTL4, and CD34; 
++ Teff: CD8A, EOMES, PRF1, IFNG, and CD274
++ myeloid inflammation: IL-6, CXCL1, CXCL2, CXCL3, CXCL8, and PTGS2.
+
+
+```{r McDermott}
+
+# Commented out after adding
+
+# angio <- select(angio, one_of(c("Locuslink", "Geneset_Angio")))
+# 
+# probeset <- left_join(probeset, angio,
+#  				  by = c("LocusLink" = "Locuslink"))
+# 
+# myeloid <- select(myeloid, one_of(c("Locuslink", "Geneset_Myeloid")))
+# 
+# probeset <- left_join(probeset, myeloid,
+#  				  by = c("LocusLink" = "Locuslink"))
+# 
+# teff <- select(teff, one_of(c("Locuslink", "Geneset_Teff")))
+# 
+# probeset <- left_join(probeset, teff,
+#  				  by = c("LocusLink" = "Locuslink"))
+
+#Changed my mind and put all in one column
+
+angio <- rename(angio,  Geneset_IMmotion150  = Geneset_Angio)
+myeloid <- rename(myeloid,  Geneset_IMmotion150  = Geneset_Myeloid)
+teff <- rename(teff,  Geneset_IMmotion150  =Geneset_Teff)
+
+IMmotion150 <- rbind(angio, myeloid, teff)%>%
+	select(one_of(c("Locuslink", "Geneset_IMmotion150")))
+
+probeset <- left_join(probeset, IMmotion150,
+ 				  by = c("LocusLink" = "Locuslink"))
+
+```
+
+
+# Merck18 gene signature
+
+IFN-γ–related mRNA profile predicts clinical response to PD-1 blockade
+Ayers et al
+J Clin Invest. 2017 Aug 1; 127(8): 2930–2940.
+
+```{r merck18}
+
+
+# Commented out after adding
+ 
+probeset <- left_join(probeset, merck18,
+  				  by = c("Symbol" = "Symbol"))
+
+```
+
+
+## RIG_I_LIKE_RECEPTOR_SIGNALING_PATHWAY
+
+Merge in the 3 clusters seen in fig 2A of 
+
++ "Endogenous retroviral signatures predict immunotherapy response in clear cell renal cell carcinoma" 
++ Smith JC et al.,J Clin Invest. 2018
++ https://doi.org/10.1172/JCI121476
+
+These are a subset of the genes in
+
++ KEGG_RIG_I_LIKE_RECEPTOR_SIGNALING_PATHWAY
+
+```{r rig1}
+
+rig1$Entrez <- as.numeric(rig1$Entrez)
+rig1 <- rename(rig1, "Geneset_RIG1" = "in list?")
+rig1$Geneset_RIG1[is.na(rig1$Geneset_RIG1)] <- "unused"
+rig1 <- select(rig1, one_of(c("Entrez", "Geneset_RIG1")))
+
+
+# Commented out after adding
+probeset <- left_join(probeset, rig1,
+					  by = c("ENTREZ" = "Entrez"))
+
+
+
+```
+
+
+## BMS CM009 93 gene baseline predictor
+
+From our baseline response analysis (311 genes), further filtered to Fold.Change >1.5 | Fold.Change < 0.66 (93 genes).
+
+```{r cm009}
+
+cm009fold <- cm009 %>%
+	filter(Fold.Change >1.5 | Fold.Change < 0.66) %>%
+	select(Probeset, Fold.Change)
+
+cm009fold <- rename(cm009fold, "Geneset_CM009" = "Fold.Change")
+
+#Commented out after adding
+probeset <- left_join(probeset, cm009fold,
+					  by = "Probeset")
+
+
+
+probeset$Geneset_CM009[probeset$Geneset_CM009 > 1] <- "CM009_up"
+probeset$Geneset_CM009[probeset$Geneset_CM009 < 1] <- "CM009_down"
+
+```
+
+
+## Corvus Adenosine Signatures
+These signatures come from ESMO 2018 poster: "Identification of Adenosine Pathway Genes Associated with Response to Therapy with the Adenosine Receptor Antagonist CPI-444; Willingham S, Hotson A, Laport G, Kwei L, Fong L, Sznol M, Powderly J, Miller R". Short signature is personal communication.
+
+Corvus created 3 Adenosine-response genesets with overlapping list of 29 genes:
+
++ sum(grepl("Nano" = from nanostring experiment (18)
++ sum(grepl("RNAseq = from RNAseq experiment (15)
++ sum(grepl("Short" = geneset Corvus are building assay for (7)
+
+```{r adenosine}
+
+#comment out after adding
+
+probeset <- left_join(probeset, adenosine [, c("BrainArray", "list")],
+					  by = c("Probeset" = "BrainArray"))
+
+probeset <- rename(probeset, "Geneset_Adenosine" = "list")
+
+```
+
+
+## EMT/stromal 8 genes
+ 
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6115401/
+
+"Among the 18 genes in the EMT/Stroma_core gene set, 8 were included in the EdgeSeq expression panel (FLNA, EMP3, CALD1, FN1, FOXC2, LOX, FBN1, and TNC). Results of analyses using the 8-gene EMT/Stroma_core signature were similar to results using the 133 EMT-related gene signature (data not shown). Therefore, we present results focused on the potentially more clinically tractable EMT/stroma_core signature."
+
+
+
+```{r emt}
+
+emt_genes <- emt%>%
+	pull(LOC)
+
+probeset$Geneset_EMTstroma <- NA
+probeset$Geneset_EMTstroma[probeset$LocusLink %in% emt_genes] <- "EMTstroma"
+
+```
+
+
+## Javelin 26 genes
+
+```{r emt}
+
+javelin_genes <- javelin%>%
+	pull(LocusLink)
+
+probeset$Geneset_Javelin <- NA
+probeset$Geneset_Javelin[probeset$LocusLink %in% javelin_genes] <- "Javelin26"
+
+```
+
+
+
+
+
+
+## Hallmark IFNA and IFNG genesets
+
+Arthur Liberzon (Broad Institute)
+
+Hallmark gene sets summarize and represent specific well-defined biological states or processes and display coherent expression. These gene sets were generated by a computational methodology based on identifying overlaps between gene sets in other MSigDB collections and retaining genes that display coordinate expression. 
+
+```{r hallmark}
+
+ifnggenes <- ifng %>%
+	pull(Entrez)
+
+probeset$Geneset_HALLMARKifng <- NA
+probeset$Geneset_HALLMARKifng[probeset$ENTREZ %in% ifnggenes] <- "IFNG"
+
+ifnagenes <- ifna %>%
+	pull(Entrez)
+
+probeset$Geneset_HALLMARKifna <- NA
+probeset$Geneset_HALLMARKifna[probeset$ENTREZ %in% ifnagenes] <- "IFNA"
+
+
+probeset$Geneset_HALLMARK <- NA
+
+probeset <- probeset %>%
+	unite(Geneset_HALLMARK,
+		  Geneset_HALLMARKifng, Geneset_HALLMARKifna,
+		  sep = " ",
+		  remove = TRUE) 
+```
+
+
+## Table of Genesets used
+
+```{r genesets}
+
+
+genesetsrows <- probeset[rowSums(is.na(probeset[, c(5:17)])) != 13,]
+
+hallmarkrows <- probeset[probeset$Geneset_HALLMARK != "NA NA",]
+
+probesetsUsed <- union(genesetsrows,hallmarkrows)
+
+```
+
+
+
+
+## Output
+
+```{r output}
+
+#sort the columns so that read_tsv hits values in first 1000 rows 
+
+probeset <- probeset %>%
+	arrange(Geneset_Tcell,
+			Geneset_ELVIDGE_HIF1A_TARGETS_DN,
+Geneset_ccRCC,
+Geneset_Fuhrman,
+Geneset_Ascierto,
+Geneset_IMmotion150,
+Geneset_Merck18,
+Geneset_RIG1,
+Geneset_CM009,
+Geneset_Adenosine,
+Geneset_EMTstroma,
+Geneset_Javelin,
+Geneset_HALLMARK)
+
+
+probeset_out_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
+
+write_tsv(probeset, probeset_out_file)
+
+
+probesetsUsed_out_file <- paste(data_dir, "U219_BrainArray_2151probesets_used.txt", sep = "/")
+
+write_tsv(probesetsUsed, probesetsUsed_out_file)
+```
+
+The output was written to:
+
++ *`r probeset_out_file`*
++ *`r probesetsUsed_out_file`*

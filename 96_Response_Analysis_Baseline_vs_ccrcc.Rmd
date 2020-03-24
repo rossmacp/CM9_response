@@ -1,0 +1,770 @@
+---
+title: "Comparing ccrcc groups with BMS Baseline response predictors"
+output: github_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+
+##_ Set knitr root directory to correspond to project working directory 
+##_  setting based on structure with code in <project dir>/code
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+## Procedure
+
+1. Load E-MTAB-3267 Probeset file containing BMS311 and ccrcc annotation
+1. Load E-MTAB-3267 RMA dataset for 359 prbs
+1. Load Brain array Probeset file containing BMS311 and ccrcc annotation
+1. Load CA209009 screen RMA dataset
+1. Heatmap of E-MTAB-3267 data for BMS predictor genes 
+1. Heatmap of CA209009 data for ccrcc predictor genes
+
+
+## Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(knitr)
+
+library(ComplexHeatmap)
+library(circlize)
+
+#packages for importing and processing MTAB3267 dataset
+#library(ArrayExpress)
+#library(affy)
+#library(annotate)
+#library(hugene10sttranscriptcluster.db)
+
+```
+
+## Data Sources
+
+```{r processINSERM}
+
+# #uses library("ArrayExpress")
+# # should this be E-MTAB-3267
+# AEset = ArrayExpress("E-MEXP-3267")
+# 
+# #uses library("affy")
+# #Creates RMA processed data ExpressionSet (assayData,phenoData,featureData, protocolData,experimentData).
+# AEsetnorm = rma(AEset)
+# 
+# #RMA values to a table, with the HuGene-1_0-st-v1 probeset IDs
+# RMAtable <- exprs(AEsetnorm)
+# 
+# # Sample annotation 
+# # Get the project's sample factors from ArrayExpress and add ccRCC class provided by Sylvie Job.
+# 
+# # Factors of interest to a table
+# factors <- pData(AEsetnorm)[,1:15]
+# 
+# # make the rownames (i.e the cel file names) into their own named column
+# factors <- factors %>% add_rownames()
+# names(factors)[1] <- "CELfile"
+# 
+# # Additional factors were obtained from Sylvie Job
+# ccrcc <- read.xlsx("./data/import/file_annot_EMTAB3267_for_Petra.xlsx", sheetIndex = 1)
+# 
+# # merge the additional factors from Sylvie into factors, using "Sample 1" etc
+# allfactors <- left_join(factors, ccrcc, by = "Source.Name")
+# 
+# # Make Response into a factor with levels in the desired order
+# allfactors$Characteristics.sunitinib.response. <- factor(allfactors$Characteristics.sunitinib.response., 
+# levels  = c("PD", "CLINICAL BENEFIT", "SD", "PR"))
+# 
+# ## Probeset annotation
+# # Affymetrix HuGene ST1.0 probesets annotation is obtained from Bioconductor library
+# #uses library(annotate)
+# #uses library(hugene10sttranscriptcluster.db)
+# annodb <- "hugene10sttranscriptcluster.db"
+# ID     <- featureNames(AEsetnorm)
+# Symbol <- as.character(lookUp(ID, annodb, "SYMBOL"))
+# Name   <- as.character(lookUp(ID, annodb, "GENENAME"))
+# Entrez <- as.character(lookUp(ID, annodb, "ENTREZID"))
+# HuGeneAnnot <- cbind.data.frame(ID,Symbol,Name,Entrez)
+# 
+# # Write these files to work directory and comment out the chunk
+# 
+# # write RMA data, Probeset annotation, sample factors to 3 files
+# write.table(RMAtable, "./work/E_MEXP_3267.txt", sep="\t")
+# write.table(HuGeneAnnot, "./work/HuGene1Anot.txt", sep="\t")
+# write.table(allfactors, "./work/E_MEXP_3267_factors.txt", sep="\t")
+
+```
+
+EMTAB3267 is provided as a custom subset:
+
++ 51 samples of the 59 in ArrayExpress
++ 359 probesets, RMA data
+
+```{r loaddata_EMTAB3267}
+
+# Hugene Probeset file containing 359prbs with ccrcc and BMS annotation
+hugene_file <- paste(data_dir, "HuGene1Anot_Predictors.txt", sep = "/")
+hugeneprobeset <- read_tsv(hugene_file)
+
+# RMA dataset for 359 prbs and 51 tumor with ccrcc in E-MTAB-3267
+rma3267_file <- paste(data_dir, "E_MTAB_3267_51samples_359prbs_RMA.txt", sep = "/")
+rma3267 <- read_tsv(rma3267_file)
+
+# Sample annotation for 51 tumor with ccrcc in E-MTAB-3267
+annot3267_file <- paste(data_dir, "E_MTAB_3267_51samples.txt", sep = "/")
+annot3267 <- read_tsv(annot3267_file)
+
+# RMA column order is same as sample row order
+
+```
+
+BMS screen biopsy data for the ccrcc70 genes is filtered from the files used for all analyses.
+
+```{r load_data_BMS}
+
+# Expression values
+rma_file <- paste(data_dir, "CA209009-tumorAffy-HGU219_HS_ENTREZG.rma", sep = "/")
+rma <- read_tsv(rma_file)
+
+# Make rma Colnames match "Assay.Name" in sdrf annotation
+colnames(rma) <- sub("ENTREZG-", "", colnames(rma))
+rma <- dplyr::rename(rma, Probeset = X1)
+
+# SDRF (Sample and Data Relationship Format) file from Array Express
+# NB move from stash when finalized (eg PBRM1 added)
+sdrf_file <- paste(data_dir, "E-MTAB-3218 sdrf_response.txt", sep = "/")
+sdrf <- read_tsv(sdrf_file)
+sdrf$Response20pct <- as.factor(sdrf$Response20pct)
+sdrf$individual <- as.factor(sdrf$individual)
+sdrf$clinical.history <- as.factor(sdrf$clinical.history)
+
+# Affymetrix probeset to Gene annotation
+probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
+probeset <- read_tsv(probeset_file)
+
+# Object containing ccrcc probesets
+ccrcc_probesets <- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC)) %>%
+	pull(Probeset)
+
+```
+
+
+
+## E-MTAB-3267 data analysis
+
+We will use data for 51 samples of the 59 in ArrayExpress
+
++ 5 normal (non-tumor) removed
++ 3 samples without ccrcc annotation removed
+
+
+## E-MTAB-3267 data for 311 BMS predictor genes
+
+The 311 BMS predictor genes could be successfully mapped to 297 genes on the Affymetrix HuGene ST1.0 array. For simplicity these are referred to as "BMS311".
+
+```{r heatmap_3267_BMS311}
+
+# filter 297 probesets for just BMS311
+hugene311 <- hugeneprobeset %>%
+	filter(!is.na(BMS311)) %>%
+	pull(ID)
+
+# filter annotationfor just BMS311
+annot311 <- hugeneprobeset %>%
+	filter(!is.na(BMS311))
+
+# filter the RMA data for the BMS 311 genes
+rma311 <- rma3267 %>%
+	filter(ID %in% hugene311)
+
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma311[,-1])))
+rownames(scaled_mat) = rma311$ID
+
+
+# Provide column order as ccrcc4
+# This works because RMA data columns in same order as sample annot rows
+ordering = order(annot3267$ccrcc.subtype)
+
+# Top heatmap annotation is sunitinib response and ccrcc
+ha_top = HeatmapAnnotation(sunitinib=
+						   	annot3267$`Characteristics.sunitinib.response.`,
+						   ccrcc = annot3267$ccrcc.subtype,
+						   col = list(sunitinib = 
+						   		   	c("CLINICAL BENEFIT" = "goldenrod1",
+						   		   	  "PR" = "goldenrod2",
+						   		   	  "SD" = "darkolivegreen3",
+						   		   	  "PD" = "black"),
+						   		  ccrcc = 
+						   		  	c(ccrcc1 = "darkolivegreen1",
+						   		  	  ccrcc2 = "darkolivegreen2",
+						   		  	  ccrcc3 = "darkolivegreen3",
+						   		  	  ccrcc4 = "goldenrod2")),
+						   annotation_height = unit(c(0.5, 0.5), "cm"))
+
+#draw(ha_top,1:51)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-1, 0, 1), c("dodgerblue", "white", "firebrick")),
+						 cluster_rows = TRUE,
+						 km = 2,
+						 show_row_names = FALSE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "MTAB3267: 51 samples, 311 BMS Response, ccrcc sort",
+						 show_column_names = FALSE,
+						 width = unit(9, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(2, "cm") 
+						 ) +
+	rowAnnotation(bms = annot311$BMS311,
+				  col = list(bms = colorRamp2(c(0.66, 1, 1.5), 
+				  							c("dodgerblue", "white", "firebrick"))),
+				  width = unit(0.3, "cm"),
+				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_EMTAB3267_BMS311.pdf")
+pdf(file=heatmap_file)
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("sunitinib", 
+					{grid.text("Sunitinib response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("ccrcc", 
+					{grid.text("ccrcc class",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+```
+
+## E-MTAB-3267 data for 93 Top BMS predictor genes
+
+The 311 BMS predictor genes (297 genes on the Affymetrix HuGene ST1.0 array) were filtered to 93 genes with >1.5-fold difference between response groups in CA209-009. For simplicity these are referred to as "BMS93".
+
+
+```{r heatmap_3267_BMS93}
+
+# filter 359 rows to 93 probesets for just BMS311 fold>1.5
+hugene93 <- hugeneprobeset %>%
+	filter(BMS311 >1.5 | BMS311 < 0.66) %>%
+	pull(ID)
+
+annot93 <- hugeneprobeset %>%
+	filter(BMS311 >1.5 | BMS311 < 0.66)
+
+# filter the RMA data for the BMS93 genes
+rma93 <- rma3267 %>%
+	filter(ID %in% hugene93)
+
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma93[,-1])))
+rownames(scaled_mat) = rma93$ID
+
+
+# Provide column order as ccrcc4
+# This works because RMA data columns in same order as sample annot rows
+ordering = order(annot3267$ccrcc.subtype)
+
+# Top heatmap annotation is sunitinib response and ccrcc
+ha_top = HeatmapAnnotation(sunitinib=
+						   	annot3267$`Characteristics.sunitinib.response.`,
+						   ccrcc = annot3267$ccrcc.subtype,
+						   col = list(sunitinib = 
+						   		   	c("CLINICAL BENEFIT" = "goldenrod1",
+						   		   	  "PR" = "goldenrod2",
+						   		   	  "SD" = "darkolivegreen3",
+						   		   	  "PD" = "black"),
+						   		  ccrcc = 
+						   		  	c(ccrcc1 = "darkolivegreen1",
+						   		  	  ccrcc2 = "darkolivegreen2",
+						   		  	  ccrcc3 = "darkolivegreen3",
+						   		  	  ccrcc4 = "goldenrod2")),
+						   annotation_height = unit(c(0.5, 0.5), "cm"))
+#draw(ha_top,1:51)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+						 cluster_rows = TRUE,
+						 km = 2,
+						 show_row_names = FALSE,
+						 cluster_columns = TRUE,
+						 clustering_method_columns = "ward",
+						 #column_order = ordering,
+						 column_title = "MTAB3267: 51 samples for 93 BMS Response",
+						 show_column_names = FALSE,
+						 width = unit(9, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(2, "cm") 
+						 ) +
+	rowAnnotation(bms = annot93$BMS311,
+				  col = list(bms = colorRamp2(c(0.66, 1, 1.5), 
+				  							c("dodgerblue", "white", "firebrick"))),
+				  width = unit(0.3, "cm"),
+				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_EMTAB3267_BMS93.pdf")
+pdf(file=heatmap_file)
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("sunitinib", 
+					{grid.text("Sunitinib response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("ccrcc", 
+					{grid.text("ccrcc class",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+```
+
+## E-MTAB-3267 data for ccrcc predictor genes
+
+The 70 ccrcc predictor genes could be successfully mapped to 63 probesets on the Hugene annotation. For simplicity these are referred to as "ccrcc70".
+
+Since the 63 are a subset of the original predictive geneset, I double check they are able to group the E_MTAB_3267 dataset by ccRCC class.
+
+```{r heatmap_3267_ccrcc_byclass}
+
+# filter 359 rows to 63 probesets for ccrcc70
+hugene70 <- hugeneprobeset %>%
+	filter(!is.na(ccrcc)) %>%
+	pull(ID)
+
+#make the annotation and sort by Rcc group/type
+annot70 <- hugeneprobeset %>%
+	filter(!is.na(ccrcc)) %>%
+ separate(ccrcc, into = c("ccRCCsubtype", "UpDown")) %>%
+	arrange(ccRCCsubtype,desc(UpDown))
+
+
+# filter the RMA data for the ccrcc70 genes
+rma70 <- rma3267 %>%
+	filter(ID %in% hugene70) 
+
+#make the RMA data in order	by ccrcc group/type
+order70 <- as.character(annot70$ID)
+rma70 <- rma70[match(order70, as.character(rma70$ID)),]
+
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma70[,-1])))
+rownames(scaled_mat) = rma70$ID
+
+
+# Provide column order as ccrcc
+# This works because RMA data columns in same order as sample annot rows
+ordering = order(annot3267$ccrcc.subtype)
+
+# Top heatmap annotation is sunitinib response and ccrcc
+ha_top = HeatmapAnnotation(sunitinib=
+						   	annot3267$`Characteristics.sunitinib.response.`,
+						   ccrcc = annot3267$ccrcc.subtype,
+						   col = list(sunitinib = 
+						   		   	c("CLINICAL BENEFIT" = "goldenrod1",
+						   		   	  "PR" = "goldenrod2",
+						   		   	  "SD" = "darkolivegreen3",
+						   		   	  "PD" = "darkolivegreen4"),
+						   		  ccrcc = 
+						   		  	c(ccrcc1 = "darkolivegreen1",
+						   		  	  ccrcc2 = "blue",
+						   		  	  ccrcc3 = "darkolivegreen3",
+						   		  	  ccrcc4 = "goldenrod2")),
+						   annotation_height = unit(c(0.5, 0.5), "cm"))
+#draw(ha_top,1:51)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("cyan", "white", "red")),
+						 cluster_rows = FALSE,
+						 show_row_names = FALSE,
+						 split = annot70$ccRCCsubtype,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "MTAB3267: 51 samples for 70 ccrcc",
+						 show_column_names = FALSE,
+						 width = unit(8, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(2, "cm") 
+						 ) +
+	rowAnnotation(class = annot70$ccRCCsubtype,
+				  type = annot70$UpDown,
+				  col = list(class = 
+				  		   	c(ccrcc1 = "darkolivegreen1",
+						   		  	  ccrcc2 = "blue",
+						   		  	  ccrcc3 = "darkolivegreen3",
+						   		  	  ccrcc4 = "goldenrod2"),
+				  		   type = c(up  = "red",
+				  		   		 dn = "blue")),
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_EMTAB3267_ccrcc70.pdf")
+pdf(file=heatmap_file)
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("sunitinib", 
+					{grid.text("Sunitinib response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("ccrcc", 
+					{grid.text("ccrcc class",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+
+```
+
+```{r heatmap_3267_ccrcc_clustered}
+
+# filter 359 rows to 63 probesets for ccrcc70
+hugene70 <- hugeneprobeset %>%
+	filter(!is.na(ccrcc)) %>%
+	pull(ID)
+
+#make the annotation and sort by Rcc group/type
+annot70 <- hugeneprobeset %>%
+	filter(!is.na(ccrcc)) %>%
+ separate(ccrcc, into = c("ccRCCsubtype", "UpDown")) %>%
+	arrange(ccRCCsubtype,desc(UpDown))
+
+
+# filter the RMA data for the ccrcc70 genes
+rma70 <- rma3267 %>%
+	filter(ID %in% hugene70) 
+
+#make the RMA data in order	by Rcc group/type
+order70 <- as.character(annot70$ID)
+rma70 <- rma70[match(order70, as.character(rma70$ID)),]
+
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma70[,-1])))
+rownames(scaled_mat) = rma70$ID
+
+
+# Provide column order as ccrcc
+# This works because RMA data columns in same order as sample annot rows
+ordering = order(annot3267$ccrcc.subtype)
+
+# Top heatmap annotation is sunitinib response and ccrcc
+ha_top = HeatmapAnnotation(sunitinib=
+						   	annot3267$`Characteristics.sunitinib.response.`,
+						   ccrcc = annot3267$ccrcc.subtype,
+						   col = list(sunitinib = 
+						   		   	c("CLINICAL BENEFIT" = "goldenrod1",
+						   		   	  "PR" = "goldenrod2",
+						   		   	  "SD" = "darkolivegreen3",
+						   		   	  "PD" = "darkolivegreen4"),
+						   		  ccrcc = 
+						   		  	c(ccrcc1 = "darkolivegreen1",
+						   		  	  ccrcc2 = "blue",
+						   		  	  ccrcc3 = "darkolivegreen3",
+						   		  	  ccrcc4 = "goldenrod2")),
+						   annotation_height = unit(c(0.5, 0.5), "cm"))
+#draw(ha_top,1:51)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("cyan", "white", "red")),
+						 cluster_rows = FALSE,
+						 show_row_names = FALSE,
+						 split = annot70$ccRCCsubtype,
+						 cluster_columns = TRUE,
+						 #column_order = ordering,
+						 column_title = "MTAB3267: 51 samples for 70 ccrcc, Clustered",
+						 show_column_names = FALSE,
+						 width = unit(8, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(2, "cm") 
+						 ) +
+	rowAnnotation(class = annot70$ccRCCsubtype,
+				  type = annot70$UpDown,
+				  col = list(class = 
+				  		   	c(ccrcc1 = "darkolivegreen1",
+						   		  	  ccrcc2 = "blue",
+						   		  	  ccrcc3 = "darkolivegreen3",
+						   		  	  ccrcc4 = "goldenrod2"),
+				  		   type = c(up  = "red",
+				  		   		 dn = "blue")),
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_EMTAB3267_ccrcc70_clustered.pdf")
+pdf(file=heatmap_file)
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("sunitinib", 
+					{grid.text("Sunitinib response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("ccrcc", 
+					{grid.text("ccrcc class",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+
+```
+
+## CA209009 data for ccrcc predictor genes
+
+The 70 ccrcc predictor genes could be successfully mapped to 65 genes on the BrainArray. However I am only using the 63 genes that were checked back on EMTAB3267. For simplicity these are referred to as "ccrcc70".
+
+
+```{r ccrcc_baseline}
+# Baseline Subject sample Annotation
+sdrfScreen <- sdrf %>%
+	filter(biopsy.timepoint == "Screen", Response20pct != "NE")
+
+# Select 56 Screen Array columns plus Probeset column
+# 'Select' gets Assay.Name cols in the same order as the sdrf annotation
+# Order is Vital for ComplexHeatmap!! Vital for limma!
+
+rmascreen <- dplyr::select(rma, one_of(c("Probeset",sdrfScreen$Assay.Name)))
+
+# Subset rmascreen data to just the 63 ccrcc probesets 
+rma70bms <- rmascreen[rmascreen$Probeset %in% ccrcc_probesets,]
+
+```
+
+The 63-genes in the ccrcc70 geneset successfully cluster the BMS data. 8 of the 13 nivolumab responders are in a 17 member group that looks like ccrcc4.
+
+```{r heatmap_BMS_ccrcc70}
+
+
+#make the bms annotation and sort by Rcc group/type
+annot70bms <- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC)) %>%
+ separate(Geneset_ccRCC, into = c("ccRCCsubtype", "UpDown")) %>%
+	arrange(ccRCCsubtype,desc(UpDown))
+
+#make the RMA data in order	by Rcc group/type
+order70bms <- annot70bms$Probeset
+rma70bms <- rma70bms[match(order70bms, rma70bms$Probeset),]
+
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma70bms[,-1])))
+rownames(scaled_mat) = rma70bms$Probeset
+
+
+# Provide column order ?
+# This works because RMA data columns in same order as sample annot rows
+# ordering = order()
+
+# Top heatmap annotation is nivo response and prior vegf
+ha_top = HeatmapAnnotation(response = sdrfScreen$Response20pct,
+							  #vegf = sdrfScreen$clinical.history,
+						   	pbrm1 = sdrfScreen$PBRM1,
+							  col = list(
+							  	#vegf = c("PriorTherapy_Yes"="goldenrod2","PriorTherapy_No"="darkolivegreen4"),
+							  		   response = c("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white"),
+							  pbrm1 = c("Missense_Mutation" = "black",
+								  		  "Nonsense_Mutation" = "goldenrod2",
+                                            "Frame_Shift_Del" = "goldenrod2" ,
+								  		  "Frame_Shift_Ins" = "goldenrod2",
+								  		  "Splice_Site" = "goldenrod2",
+								  		  "WT" = "black"
+								  		  )		   ),
+							  na_col = "white",
+							  annotation_height = unit(c(.5, .5), "cm"))
+#draw(ha_top,1:51)
+
+ha_bottom = HeatmapAnnotation(colname = anno_text(sdrfScreen$individual, rot = 90, just = "right", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  annotation_height = unit(c(1), "cm"))
+
+
+
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+						 cluster_rows = FALSE,
+						 show_row_names = FALSE,
+						 split = annot70bms$ccRCCsubtype,
+						 cluster_columns = TRUE,
+						 clustering_method_columns = "ward.D2",						 
+						 #column_order = ordering,
+						 column_title = 
+						 	"CA209009: 56 screen samples for 70ccrcc, Clustered",
+						 show_column_names = FALSE,
+						 width = unit(8, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(2, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(3, "cm")) +
+	rowAnnotation(class = annot70bms$ccRCCsubtype,
+				  type = annot70bms$UpDown,
+				  col = list(class = 
+				  		   	c(ccrcc1 = "darkolivegreen1",
+						   		  	  ccrcc2 = "darkolivegreen2",
+						   		  	  ccrcc3 = "darkolivegreen3",
+						   		  	  ccrcc4 = "goldenrod2"),
+				  		   type = c(up  = "red",
+				  		   		 dn = "blue")),
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_BiopsyScreen_ccrcc70_clustered.pdf")
+pdf(file=heatmap_file)
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+# decorate_annotation("vegf", 
+# 					{grid.text("Prior VEGFi",
+# 							   unit(-2, "mm"), just = "right",
+# 							   gp = gpar(fontsize = 10))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("pbrm1", 
+					{grid.text("PBRM1 Status", unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+
+```
+
+The 21-gene ccrcc4 subset of the ccrcc70 geneset successfully clusters the BMS data. 8 of 13 nivolumab responders are in a 16 member group that looks like ccrcc4.
+
+```{r heatmap_BMS_ccrcc21}
+
+
+# subset the bms annotation to 21 genes in ccrcc4
+annot21bms <- annot70bms %>%
+	filter(ccRCCsubtype == "ccrcc4") %>%
+	arrange(UpDown)
+
+# subset the RMA data to ccrcc4
+# Put cold genes on top to match other cluster
+
+rma21bms <- rma70bms[rma70bms$Probeset %in% annot21bms$Probeset,]
+rma21bms <- rma21bms[match(annot21bms$Probeset, rma21bms$Probeset),]
+
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma21bms[,-1])))
+rownames(scaled_mat) = rma21bms$Probeset
+
+
+# Provide column order ?
+# This works because RMA data columns in same order as sample annot rows
+# ordering = order()
+
+# Top heatmap annotation is nivo response and prior vegf
+ha_top = HeatmapAnnotation(response = sdrfScreen$Response20pct,
+							  #vegf = sdrfScreen$clinical.history,
+							  col = list(#vegf = c("PriorTherapy_Yes"="goldenrod2","PriorTherapy_No"="darkolivegreen4"),
+							  		   response = c("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5), "cm"))
+#draw(ha_top,1:51)
+
+ha_bottom = HeatmapAnnotation(colname = anno_text(sdrfScreen$individual, rot = 90, just = "right", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  annotation_height = unit(c(1), "cm"))
+
+
+
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+						 cluster_rows = FALSE,
+						 show_row_names = FALSE,
+						 split = annot21bms$ccRCCsubtype,
+						 cluster_columns = TRUE,
+						 clustering_method_columns = "ward.D2",	
+						 #column_order = ordering,
+						 column_title = 
+						 	"CA209009: 56 screen samples for 21ccrcc4, Clustered",
+						 show_column_names = FALSE,
+						 width = unit(10, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(1, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(1, "cm")) +
+	rowAnnotation(class = annot21bms$ccRCCsubtype,
+				  type = annot21bms$UpDown,
+				  col = list(class = 
+				  		   	c(ccrcc1 = "darkolivegreen1",
+						   		  	  ccrcc2 = "darkolivegreen2",
+						   		  	  ccrcc3 = "darkolivegreen3",
+						   		  	  ccrcc4 = "goldenrod2"),
+				  		   type = c(up  = "red",
+				  		   		 dn = "blue")),
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_BiopsyScreen_ccrcc4_clustered.pdf")
+pdf(file=heatmap_file)
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+# decorate_annotation("vegf", 
+# 					{grid.text("Prior VEGFi",
+# 							   unit(-2, "mm"), just = "right",
+# 							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+dev.off()
+
+```

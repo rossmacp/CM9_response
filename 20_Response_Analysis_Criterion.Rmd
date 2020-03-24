@@ -1,0 +1,559 @@
+---
+title: "20% Criterion versus other Clinical Metrics"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+
+##_ Set knitr root directory to correspond to project working directory 
+##_  setting based on structure with code in <project dir>/code
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+## Procedure
+
+1. Load Patient Annotation
+1. Scatter plot: MPCT against PFS for all subjects
+1. Scatter plot: MPCT against PFS for baseline Affymetrix subjects
+1. Waterfall: MPCT against 20pct classes,PDL1, Arm, BOR3
+1. KM:  20pct classes versus PFS, OS
+
+## Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(ComplexHeatmap)
+library(circlize)
+library(ggpubr)
+library(survival)
+suppressPackageStartupMessages(library(survminer))
+library(RColorBrewer)
+
+```
+
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+
+
+```
+
+```{r palettes}
+
+
+# shape map for prior therapy
+shape_prior <- c("Pretreated" = 16, 
+              "Naive" = 18)
+
+
+# color map for response
+color_response <- c("Not20pct" = "black", 
+              "20pctDec" = "goldenrod2")
+
+```
+
+## Data sources
+
+```{r loaddata}
+
+# Patient Annotation
+# Anonymized
+clinicalData_file <- paste(data_dir, "CM9_Patient_Annotation.txt", sep = "/" )
+clinicalData <- read_tsv(clinicalData_file)
+
+```
+
+## Scatter plot for all Subjects
+
+```{r scatter_all}
+
+#make censoring a factor not numeric for plot purpose
+#clinicalData$PFS_SOR <- factor(clinicalData$PFS_SOR, levels = c("0","1"))
+
+
+plotcountscatter <- nrow(clinicalData %>% filter(Response20pct != "NE",
+												 !is.na(MPCT)))
+
+scatterplot_all <- clinicalData %>% filter(Response20pct != "NE",
+										   !is.na(MPCT)) %>%
+	ggplot() +
+	geom_point(aes(x = PFS, y = MPCT, 
+				   colour = Response20pct, shape = VEGFstatus),
+			   size = 3, position = position_jitter(15)) +
+	scale_colour_manual(name = 'Response',
+						values = color_response) +
+	scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+  geom_hline(yintercept = -20, linetype="dashed") +
+  geom_text(data=data.frame(x=850,y=-25), 
+  		  aes(x, y), label= ">20% Tumor Burden Reduction", size = 3) +
+  #coord_fixed(ratio = 1) +
+  labs(title = "CA209-009:\nMPCT versus PFS",
+  	 subtitle = paste("Patients classified, N=",plotcountscatter),
+       x = "PFS, days",
+      y = "MPCT") +
+  theme_dj(14) +
+  theme(legend.position = "bottom") +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), shape = guide_legend(nrow=2,byrow=TRUE))
+
+print(scatterplot_all)
+```
+
+## Scatter plot for Subjects with baseline Affy data
+
+```{r scatter_affy}
+
+#make censoring a factor not numeric for plot purpose
+#clinicalData$PFS_SOR <- factor(clinicalData$PFS_SOR, levels = c("0","1"))
+
+
+plotcountscatterbaseline <- nrow(clinicalData %>% filter(Response20pct != "NE" 
+												 & !is.na(Subject_Affy_Status) 
+												 	& Subject_Affy_Status != "13Post"))
+
+scatterplotbaseline <- clinicalData %>% filter(Response20pct != "NE" 
+												 & !is.na(Subject_Affy_Status) 
+												 	& Subject_Affy_Status != "13Post") %>%
+ggplot() +
+	geom_point(aes(x = PFS, y = MPCT, 
+				   colour = Response20pct, shape = VEGFstatus),
+			   size = 3, position = position_jitter(15)) +
+	scale_colour_manual(name = 'Response',
+						values = color_response) +
+	scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+  geom_hline(yintercept = -20, linetype="dashed") +
+  geom_text(data=data.frame(x=850,y=-25), 
+  		  aes(x, y), label= ">20% Tumor Burden Reduction", size = 3) +
+  #coord_fixed(ratio = 1) +
+  labs(title = "CA209-009:\nMPCT versus PFS",
+  	 subtitle = paste("Patients with Baseline Affymetrix, N=",plotcountscatterbaseline),
+       x = "PFS, days",
+      y = "MPCT") +
+  theme_dj(14) +
+  theme(legend.position = "bottom") +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), shape = guide_legend(nrow=2,byrow=TRUE))
+
+print(scatterplotbaseline)
+```
+
+## Waterfall plots with clinical annotation
+
+```{r waterfall_select}
+
+# This will be a zero data matrix
+zero_row_mat = matrix(nrow = 0, ncol = nrow(clinicalData))
+colnames(zero_row_mat) = clinicalData$MPCTrank
+
+
+# Want to plot MPCT Response20pct PDL1cat BOR3 SUBJID
+# Later plot TMB, VHL, PBRM1 SETD2?
+
+# Provide column order as  = waterfall plot
+ordering = order(-clinicalData$MPCTrank)
+
+#Count subjects in plot
+plotcount <- nrow(clinicalData)
+
+ha_top = HeatmapAnnotation(barplot1 = anno_barplot(clinicalData$MPCT, 
+												   axis = TRUE, 
+												   baseline = 0,
+						   						gp = gpar(fill = 
+						   								  	ifelse(clinicalData$Response20pct == "20pctDec",
+						   								  		   "goldenrod2", "black"))),
+						   barplot2 = anno_barplot(clinicalData$MPCTbiopsyS1, 
+												   axis = TRUE, 
+												   baseline = 0,
+						   						gp = gpar(fill = 
+						   								  	ifelse(clinicalData$MPCTbiopsyS1 <= -20,
+						   								  		   "goldenrod2", "black"))),
+						   annotation_height = unit(c(3,3), "cm"))
+
+
+
+
+ha_bottom = HeatmapAnnotation(response = clinicalData$Response20pct,
+							  bor = clinicalData$BOR,
+							  matchlesion = clinicalData$MatchedLesionBiopsy,
+							  biopsy = clinicalData$Lesion_Site_Simple.S1,
+							  col = list(matchlesion = c("TRUE" = "goldenrod2",
+							  		   				"FALSE" = "black"),
+							  		   biopsy = c("LymphNode"  = "goldenrod2",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black"),
+							  		   response = c("Not20pct" ="black",
+							  		   			 "20pctDec"= "goldenrod2",
+							  		   			 "NE" = "white"),
+							  bor = c("PD" = "black",
+							  		"SD" = "grey",
+							  		"PR" = "goldenrod1",
+							  		"CR" = "goldenrod2",
+							  		"NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5,.5,.5), "cm"))
+
+#draw(ha_top,1:91)
+#draw(ha_bottom,1:91)
+
+
+heatmap_object = Heatmap(zero_row_mat, 
+						 column_order = ordering,
+						 column_title = "CA209-009: 91 subjects",
+						 show_column_names = FALSE,
+						 width = unit(11, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(6, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(2, "cm"))
+
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste(results_dir, "/Clinical_Heatmap_Annotation_",
+					   plotcount,"_Subjects_Select.pdf",
+					   sep="")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+
+decorate_annotation("barplot1", 
+					{grid.text("Tumor Burden\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+decorate_annotation("barplot2", 
+					{grid.text("Baseline Biopsy\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("matchlesion", 
+					{grid.text("Lesion Pair",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("bor", 
+					{grid.text("RECIST BOR",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+
+
+
+dev.off()
+
+```
+
+```{r waterfall_all}
+
+# This will be a zero data matrix
+zero_row_mat = matrix(nrow = 0, ncol = nrow(clinicalData))
+colnames(zero_row_mat) = clinicalData$MPCTrank
+
+
+# Want to plot MPCT Response20pct PDL1cat BOR3 SUBJID
+# Later plot TMB, VHL, PBRM1 SETD2?
+
+# Provide column order as  = waterfall plot
+ordering = order(-clinicalData$MPCTrank)
+
+#Count subjects in plot
+plotcount <- nrow(clinicalData)
+
+ha_top = HeatmapAnnotation(barplot1 = anno_barplot(clinicalData$MPCT, 
+												   axis = TRUE, 
+												   baseline = 0,
+						   						gp = gpar(fill = 
+						   								  	ifelse(clinicalData$Response20pct == "20pctDec",
+						   								  		   "goldenrod2", "black"))),
+						   barplot2 = anno_barplot(clinicalData$MPCTbiopsyS1, 
+												   axis = TRUE, 
+												   baseline = 0,
+						   						gp = gpar(fill = 
+						   								  	ifelse(clinicalData$MPCTbiopsyS1 <= -20,
+						   								  		   "goldenrod2", "black"))),
+						   barplot3 = anno_barplot(clinicalData$TMB,
+						   					axis = TRUE, 
+												   baseline = 0),
+						   annotation_height = unit(c(3,3,2), "cm"))
+
+
+
+
+ha_bottom = HeatmapAnnotation(response = clinicalData$Response20pct,
+							  bor = clinicalData$BOR,
+							  pdl1 = clinicalData$PDL1cat,
+							  vegf = clinicalData$VEGFstatus,
+							  matchlesion = clinicalData$MatchedLesionBiopsy,
+							  biopsy = clinicalData$Lesion_Site_Simple.S1,
+							  AffyStatus = clinicalData$Subject_Affy_Status,
+							  colname = anno_text(clinicalData$SUBJID,
+												  rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"),
+												  gp = gpar(fontsize = 7)),
+							  col = list(vegf = c("Pretreated"="goldenrod2",
+							  					"Naive"="darkolivegreen4"),
+							  		   pdl1 = c("0%" = "grey", 
+							  					"1to5%" = "red",
+							  					"5+%" = "red"),
+							  		   matchlesion = c("TRUE" = "goldenrod2",
+							  		   				"FALSE" = "black"),
+							  		   biopsy = c("LymphNode"  = "goldenrod2",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black"),
+							  		   AffyStatus = c("17Pre"="darkolivegreen4",
+							  						  "13Post" = "blue",
+							  						  "42Pairs"="goldenrod2"),
+							  		   response = c("Not20pct" ="black",
+							  		   			 "20pctDec"= "goldenrod2",
+							  		   			 "NE" = "white"),
+							  bor = c("PD" = "black",
+							  		"SD" = "grey",
+							  		"PR" = "goldenrod1",
+							  		"CR" = "goldenrod2",
+							  		"NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5,.5,.5,.5,.5,.5,.5), "cm"))
+
+draw(ha_top,1:91)
+draw(ha_bottom,1:91)
+
+
+heatmap_object = Heatmap(zero_row_mat, 
+						 column_order = ordering,
+						 column_title = "CA209-009: 91 subjects",
+						 show_column_names = FALSE,
+						 width = unit(11, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(9, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(4, "cm"))
+
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste(results_dir, "/Clinical_Heatmap_Annotation_",
+					   plotcount,"_Subjects_All.pdf",
+					   sep="")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+
+decorate_annotation("barplot1", 
+					{grid.text("Tumor Burden\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+decorate_annotation("barplot2", 
+					{grid.text("Baseline Biopsy\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+
+decorate_annotation("barplot3", 
+					{grid.text("TMB",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 9))})
+
+decorate_annotation("vegf", 
+					{grid.text("Prior VEGFi",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+decorate_annotation("matchlesion", 
+					{grid.text("Lesion Pair",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("pdl1", 
+					{grid.text("PDL1 category",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("bor", 
+					{grid.text("BOR",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("AffyStatus", 
+					{grid.text("Affymetrix",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+dev.off()
+
+```
+## PFS: Median by 20% group 
+
+```{r median_pfs}
+
+clinicalData2 = filter(clinicalData, Response20pct != "NE")
+
+pfs_cont <- survfit(Surv(clinicalData2$PFS, 1-clinicalData2$PFS_SOR) ~ Response20pct,
+					data = clinicalData2, conf.type=c("log-log"))
+
+df <- as.data.frame(summary(pfs_cont)$table[, c("n.start", "events", "median", "0.95LCL", "0.95UCL" )])
+rn <- gsub( "Response20pct=", "", rownames(df))
+
+as.data.frame(df, row.names = rn)
+
+```
+
+## PFS: KM by 20% group
+
+```{r KM_PFS}
+
+#make a 2-level palette
+two_palette <-c( RColorBrewer::brewer.pal(9,"Blues")[c(5,9)],
+                 RColorBrewer::brewer.pal(9,"Reds")[c(5,9)],
+                 RColorBrewer::brewer.pal(9,"Greens")[c(5,9)])
+				 
+#Count subjects in plot
+plotcount <- nrow(clinicalData2)
+                 
+# Produce the survfit object created in chunk {r median_pfs} and save to a file
+
+pfs_file <- paste(results_dir, "/Clinical_KM_PFS_",
+					   plotcount,"_Subjects.pdf",
+					   sep="")
+pdf(file=pfs_file)
+
+ggsurvplot(pfs_cont,
+		   legend.title = "Response category:",
+		   legend.labs = c("Responder", "NonResponder"),
+		   risk.table = T, pval=T, conf.int=T, risk.table.y.text.col=T, risk.table.y.text=T,
+		   palette = c("goldenrod2", "black"),
+		   surv.median.line = c("h"),
+		   title= "CA209-009: PFS by 20% Response Category",
+		   subtitle = paste0("Categorized Subjects, N = ",plotcount))+ 
+	guides(colour = guide_legend(nrow = 2))
+
+dev.off()
+```
+
+## OS: Median by 20% group 
+
+```{r median_os}
+
+clinicalData2 = filter(clinicalData, Response20pct != "NE")
+
+os_cont <- survfit(Surv(clinicalData2$OS, 1-clinicalData2$OS_SOR) ~ Response20pct + VEGFstatus,
+					data = clinicalData2, conf.type=c("log-log"))
+
+df <- as.data.frame(summary(os_cont)$table[, c("n.start", "events", "median", "0.95LCL", "0.95UCL" )])
+rn <- gsub( "Response20pct=", "", rownames(df))
+rn <- gsub( "VEGFstatus=", "", rn)
+
+as.data.frame(df, row.names = rn)
+
+```
+
+## OS: KM by 20% group
+
+```{r KM_OFS}
+
+#make a 2-level palette
+two_palette <-c( RColorBrewer::brewer.pal(9,"Oranges")[c(5,9)],
+                 RColorBrewer::brewer.pal(9,"Greys")[c(5,9)],
+                 RColorBrewer::brewer.pal(9,"Greens")[c(5,9)])
+
+
+#Count subjects in plot
+plotcount <- nrow(clinicalData2)
+                 
+# Produce the survfit object created in chunk {r median_pfs} and save to a file
+
+os_file <- paste(results_dir, "/Clinical_KM_OS_",
+					   plotcount,"_Subjects.pdf",
+					   sep="")
+pdf(file=os_file)
+
+ggsurvplot(os_cont,
+		   legend.title = "Response category:",
+		   legend.labs = c("Responder, Naive", "Responder, Pretreated",
+		   				"NonResponder, Naive", "NonResponder, Pretreated"),
+		   risk.table = T, pval=T, conf.int=F, risk.table.y.text.col=T, risk.table.y.text=T,
+		   palette = two_palette,
+		   surv.median.line = c("h"),
+		   title= "CA209-009: OS by 20% Response Category",
+		   subtitle = paste0("Categorized Subjects, N = ",plotcount)) + 
+	guides(colour = guide_legend(nrow = 4))
+
+dev.off()
+```
+
+## Outputs
+
+```{r outputs}
+
+# Save scatter plot
+scatter_file <- paste(results_dir, "/Clinical_Scatterplot_MPCT_PFS_",
+					   plotcountscatter,"_Subjects.png",
+					   sep="")
+
+ggsave(scatterplot_all, file = scatter_file, width=7, height=5,
+	   units = "in", dpi = 96)
+
+# Save scatter plot
+scatterbaseline_file <- paste(results_dir, "/Clinical_Scatterplot_MPCT_PFS_",
+					   plotcountscatterbaseline,"_Subjects_Baseline.png",
+					   sep="")
+
+ggsave(scatterplotbaseline, file = scatterbaseline_file, width=7, height=5,
+	   units = "in", dpi = 96)
+
+
+```
+

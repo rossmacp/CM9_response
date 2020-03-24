@@ -1,0 +1,214 @@
+---
+title: "CA209009 - Gene Set Enrichment - *Response Analyses*"
+output: github_document
+bibliography:
+- ../resources/references/google_scholar_library.bib
+- ../resources/references/online_resources.bib
+- ../resources/references/pubmed_export_with_cite_key_reformatted.bib
+- ../resources/references/r_citations.bib
+- ../resources/references/biorxiv_library.bib
+- ../resources/references/manually_edited_library.bib
+csl: ../resources/references/elsevier-harvard2.csl
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+set.seed(8675309, kind="Mersenne-Twister", normal.kind="Inversion") # Jenny, I've got your number
+```
+
+```{r set_wd_interactive, include=FALSE}
+if ("rstudioapi" %in% installed.packages()[, "Package"] & rstudioapi::isAvailable() & interactive()) {
+  # When in RStudio, dynamically sets working directory to path of this script
+  setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+}
+```
+
+## Procedure
+
+1. Load precomputed differential expression tests of response groups
+1. Compute gene set enrichments with GSEA using the [MSigDB CP collection](http://software.broadinstitute.org/gsea/msigdb/collections.jsp).
+1. After enrichment, filter to showcase only those gene sets that are net down-regulated
+1. Gene set enrichment plots and tables of *net downregulated* gene sets only.
+1. Save plots and tables to `results` directory.
+
+## Paths and Packages
+
+```{r paths_packages}
+# Use newest version of pathwaze from BRAN
+install.packages("pathwaze", repos="bran.pri.bms.com", quiet=TRUE)
+
+library(annotables)
+library(checkmate)
+library(conflicted)
+library(GSEABase)
+library(limma)
+library(pathwaze)
+library(tidyverse)
+
+# For functions that appear in multiple packages, specify which one we want.
+conflict_prefer("filter", "dplyr")
+conflict_prefer("select", "dplyr")
+
+# Set the default ggplot theme to "theme_bw" with specified base font size
+theme_set(theme_bw(20))
+
+# Provide paths
+data_dir <- "../InputData"
+results_dir <- "../results"
+work_dir <- "../work"
+
+##### Constants
+GSEA_FDR_THRESHOLD <- 0.1
+```
+
+## Data Sources
+
+```{r load_data_and_collections}
+
+# nlme Results
+#This has group means from the model, not raw RMA values
+TumorRESPfile <- file.path(data_dir, "CA209009-tumorAffy-table02-v01.csv")
+dat <- read.csv(TumorRESPfile, stringsAsFactors=FALSE, header=TRUE, na.strings = "NA")
+
+
+#dat <- read.csv("/stash/data/nonclin/DS-259/P01376/tables/CA209009-tumorAffy-table02-v01.csv")
+
+# From Petra: Column "response0" is "diff response groups at screen"
+baselineTable <- dat %>%
+  select(Gene, contains("response0")) %>%
+  mutate(entrez=str_replace(Gene, "_at", ""),
+         gsea_rank=(sign(response0) * -log10(p.response0)))
+
+# From Petra: Column "response28" is "diff response groups at day 28"
+day28Table <- dat %>%
+  select(Gene, contains("response28")) %>%
+  mutate(entrez=str_replace(Gene, "_at", ""),
+         gsea_rank=(sign(response28) * -log10(p.response28)))
+
+# From Petra: Time vs response interaction
+timeVsResponseTable <- dat %>%
+  select(Gene, contains("response28vs0")) %>%
+  mutate(entrez=str_replace(Gene, "_at", ""),
+         gsea_rank=(sign(response28vs0) * -log10(p.response28vs0)))
+
+
+##### MSigDB
+h <- getMSigDBCollection("h")
+# Due to an issue with the CP collection in the MSigDB XML, we create it 
+# manually by combining CP, CP:KEGG, CP:BIOCARTA, CP:REACTOME. We extract the
+# GeneSets from each GeneSetCollection and put them back together.
+cp <- getMSigDBCollection("CP")
+kegg <- getMSigDBCollection("CP:KEGG")
+biocarta <- getMSigDBCollection("CP:BIOCARTA")
+reactome <- getMSigDBCollection("CP:REACTOME")
+pid <- getMSigDBCollection("CP:PID")
+cp <- GeneSetCollection(c(unlist(unlist(cp)), unlist(unlist(kegg)),
+                          unlist(unlist(biocarta)), unlist(unlist(reactome)),
+                          unlist(unlist(pid))))
+```
+
+## Gene set enrichment analysis
+
+We compute Gene Set Enrichment Analysis [@mootha2003pgc-1alpha-responsive; @subramanian2005gene; @Sergushichev060012] with either MSigDB (hallmark pathways, curated pathways; v7.0) [@liberzon2015the-molecular; @subramanian2005gene]. For more information about these resources see:
+
+  - https://www.pathwaycommons.org/guide/primers/data_analysis/gsea/
+  - http://software.broadinstitute.org/gsea/msigdb/collections.jsp
+
+MSigDB *curated pathways* consist of `r length(cp)` gene sets including `r length(unique(unlist(geneIds(cp))))` unique gene IDs.
+
+From Bader and colleagues [-@reimand2019pathway], Enrichment Map Supplementary Protocol 2, section 1.1.7:
+
+> GSEA looks for enrichment in the top and bottom parts of the list, ranking the file using the t-statistic. The t-statistic indicates the strength of differential expression and is used in the p-value calculation. Other scores indicating the strength of differential expression may be used as well. GSEA ranks the most up-regulated genes at the top of the list and the most down-regulated at the bottom of the list. Genes at the top of the list are more highly expressed in class A compared to class B, while genes at the bottom of the list are higher in class B.
+
+For more information about GSEA ranking metrics, see the GSEA documentation (https://software.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Metrics_for_Ranking) and Zyla et al., [-@zyla2017ranking].
+
+The GSEA enrichment score (ES) represents the degree to which a gene set is overrepresented at the top or bottom of a ranked list of genes. A positive ES indicates gene set enrichment at the top of the ranked list, and a negative ES indicates gene set enrichment at the bottom of the ranked list. The ES is a function of gene set size, and, therefore, ESs cannot be directly compared across gene sets. Cross-gene set comparisons are facilitated by the normalized enrichment score (NES). For more information see the Broad GSEA guide to [GSEA Statistics](https://software.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_GSEA_Statistics).
+
+We report significant normalized enrichment scores below (FDR < `r GSEA_FDR_THRESHOLD`).
+
+```{r gene_set_enrichment, warning=FALSE}
+plotGSEA <- function(gse, title="", prefixOmit=FALSE) {
+  # Helper function to plot pathwaze GSE output and modify gene set names
+  if (prefixOmit) {
+    gse$enriched <- mutate(
+      gse$enriched, 
+      pathway=str_replace_all(str_replace(pathway, "([A-Za-z]+)_(.+)", "\\2"), "_", " "))
+  } else {
+    gse$enriched <- mutate(
+      gse$enriched, 
+      pathway=str_replace_all(str_replace(pathway, "([A-Za-z]+)_(.+)", "\\2 (\\1)"), "_", " "))
+  }
+  
+  gse$enriched <- gse$enriched %>%
+    filter(padj <= GSEA_FDR_THRESHOLD) %>%
+    # use the NES order from arrange() above to set pathway order in plot
+    mutate(pathway=factor(pathway, levels=rev(pathway)))
+  
+  g <- ggplot(gse$enriched, aes(x=pathway, y=NES, fill=NES)) +
+    geom_bar(stat="identity") +#, alpha=0.7) +
+    labs(x="", y="Normalized Enrichment Score", title=title) +
+    scale_fill_gradientn(colours=hcl.colors(20, "plasma")) +
+    coord_flip()
+  
+  return(g)
+}
+
+myGSE <- function(currentTable, filePrefix, collection, ...) {
+  # Helper function to execute gene set enrichment.
+  # Params:
+  #   currentTable = table with GSEA rank details
+  #   filePrefix = output file prefix
+  #   collection = GeneSetCollection object for DB of gene sets/pathways
+  #   w = figure width
+  #   h = figure height
+  #   ... = arguments passed to pathwaze::runGSEA()
+  
+  preranked <- setNames(currentTable$gsea_rank, currentTable$entrez)
+  
+  # Compute enrichment
+  gse <- runGSEA("human", collection, prerank=preranked, gseSigLevel=GSEA_FDR_THRESHOLD)
+  
+  gsePlot <- plotGSEA(gse, ...)
+  
+  # The fraction in the plotting function below is the ADJ P value cutoff for plotting
+  ggsave(
+    filename=file.path(results_dir, paste0(filePrefix, "_plot.png")),
+    plot=gsePlot, device="png", width=12, height=8)
+  
+  write.csv(select(gse$enriched, -leadingEdge),
+            file=file.path(results_dir, paste0(filePrefix, "_table.csv")),
+            row.names=FALSE)
+}
+
+myGSE(baselineTable, "pathwaze_Response_baseline_Hallmark", h, prefixOmit=TRUE)
+myGSE(baselineTable, "pathwaze_Response_baseline_Curated_Pathways", cp)
+
+myGSE(day28Table, "pathwaze_Response_day28_Hallmark", h, prefixOmit=TRUE)
+myGSE(day28Table, "pathwaze_Response_day28_Curated_Pathways", cp)
+
+myGSE(timeVsResponseTable, "pathwaze_Response_time_vs_response_Hallmark", h, prefixOmit=TRUE)
+myGSE(timeVsResponseTable, "pathwaze_Response_time_vs_response_Curated_Pathways", cp)
+```
+
+
+## References
+
+<!-- From https://stackoverflow.com/questions/41532707/include-rmd-appendix-after-references
+ div tells Pandoc to include the refs here, rather than at the end of the document. -->
+ 
+<div id="refs"></div>
+
+
+## `R` session information
+
+```{r, echo_session_info}
+sessionInfo()
+```

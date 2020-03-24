@@ -1,0 +1,158 @@
+---
+title: "CA209009 - Gene Set Enrichment - *CD3TCRsig_Baseline_Day28*"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 8675309  # Jenny, I've got your number
+```
+
+```{r set_wd_interactive, include=FALSE}
+if ("rstudioapi" %in% installed.packages()[, "Package"] & rstudioapi::isAvailable() & interactive()) {
+  # When in RStudio, dynamically sets working directory to path of this script
+  setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+}
+```
+
+## Procedure
+
+1. Load precomputed `limma` fit objects
+1. Compute gene set enrichments with the `limma::cameraPR` method using [MSigDB collections](http://software.broadinstitute.org/gsea/msigdb/collections.jsp) *C2 curated gene sets* and *Hallmark gene sets*.
+1. After enrichment, filter to showcase only those gene sets that are net down-regulated
+1. Gene set enrichment plots and tables of *net downregulated* gene sets only.
+1. Save plots and tables to `results` directory.
+
+## Paths and Packages
+
+```{r paths_packages}
+library(annotables)
+library(limma)
+library(pathwaze)
+library(tidyverse)
+
+# Set the default ggplot theme to "theme_bw" with specified base font size
+theme_set(theme_bw(20))
+
+# If on Domino save to results dir
+RESULTS_DIR <- "."
+if (Sys.getenv("DOMINO_WORKING_DIR") != "") RESULTS_DIR <- "../results"
+```
+
+## Data Sources
+
+```{r load_data}
+baselineFit <- readRDS("/stash/results/dev/rossmacp/P01376_CA209009_Response_Manuscript_Figures/checkmate9_CD3TCRsig_baseline_limma.rds")
+
+day28Fit <- readRDS("/stash/results/dev/rossmacp/P01376_CA209009_Response_Manuscript_Figures/checkmate9_CD3TCRsig_Day28_Response_limma.rds")
+
+probeset <- readRDS("/stash/results/dev/rossmacp/P01376_CA209009_Response_Manuscript_Figures/probeset_annotation.rds") %>%
+  mutate(entrez_unique=str_extract(Probeset, "^\\d+")) %>%
+  select(Probeset, entrez_unique)
+
+# Load gene sets from MSigDB
+h <- getMSigDBCollection("h")
+c2 <- getMSigDBCollection("c2")
+```
+
+## Gene set enrichment
+
+We perform gene set enrichment using the [`limma::camera` method](https://www.ncbi.nlm.nih.gov/pubmed/22638577) method with MSigDB C2 and Hallmark gene sets.
+
+```{r gene_set_enrichment, warning=FALSE}
+runGSE <- function(fit, filePrefix, collection, unadjustedPThreshold=1, netDown, w, h, ...) {
+  # Helper function to execute gene set enrichment.
+  # Params:
+  #   fit = limma fit object
+  #   filePrefix = output file prefix
+  #   collection = GeneSetCollection object for DB of gene sets/pathways
+  #   unadjustedPThreshold = When no genes are significant, we may want to only
+  #                          consider significant genes *before* multiple testing
+  #                          correction [default=1]
+  #   netDown = boolean indicating if we are interested in gene sets with a net
+  #             downregulation (ignoring enriched, but upregulated, gene sets)
+  #   w = figure width
+  #   h = figure height
+  #   ... = arguments passed to pathwaze::runCameraPR()
+  
+  # Extract t-statistic and p-values and convert probeset IDs to Entrez IDs
+  tt <- topTable(fit, number=Inf) %>%
+    rownames_to_column("Probeset") %>%
+    filter(P.Value <= unadjustedPThreshold)
+  
+  tDat <- tt %>%
+    select(Probeset, t) %>%
+    left_join(probeset, by="Probeset") %>%
+    select(-Probeset) %>%
+    column_to_rownames("entrez_unique") %>%
+    as.matrix()
+  
+  pDat <- tt %>%
+    select(Probeset, P.Value) %>%
+    left_join(probeset, by="Probeset") %>%
+    select(-Probeset) %>%
+    column_to_rownames("entrez_unique") %>%
+    as.matrix()
+  
+  # Compute enrichment
+  gse <- runCameraPR("human", collection, tDat, pDat, ...)
+  
+  if (netDown) {
+    # Only consider the gene sets that are net downregulated
+  	# Add Symbol and description using annotables
+    gse$enriched <- filter(gse$enriched, Direction == "Down")
+    gse$setDetails <- semi_join(gse$setDetails, gse$enriched, by="set_name") %>%
+    	mutate(entrez_9606 = as.numeric(entrez_9606)) %>%
+    	left_join(select(grch37, entrez, symbol, description), 
+    			  by=c("entrez_9606"="entrez"))
+    
+  }
+  
+  # The fraction in the plotting function below is the ADJ P value cutoff for plotting
+  ggsave(
+    filename=file.path(RESULTS_DIR, paste0(filePrefix, "_plot.png")),
+    plot=geneSetEnrichmentPlot(gse$setDetails, 0.1),
+    device="png", width=w, height=h)
+  
+  write.csv(gse$enriched,
+            file=file.path(RESULTS_DIR, paste0(filePrefix, "_table.csv")),
+            row.names=FALSE)
+  
+  write.csv(gse$setDetails,
+            file=file.path(RESULTS_DIR, paste0(filePrefix, "_table_detail.csv")),
+            row.names=FALSE)
+}
+
+# Only gene sets that are net downregulated for baseline
+runGSE(baselineFit, "pathwaze_CD3TCRsig_baseline_Hallmark", h, netDown=TRUE, w=7, h=3)
+runGSE(baselineFit, "pathwaze_CD3TCRsig_baseline_C2", c2, netDown=TRUE, w=7, h=12)
+```
+
+Nothing significantly DE in the Day28 contrast, so relax the FDR threshold.
+
+Relaxed to FDR < 0.5 yields `r filter(topTable(day28Fit, number=Inf), adj.P.Val < 0.5) %>% nrow` DE genes.
+
+Relaxed to FDR < 0.6 yields `r filter(topTable(day28Fit, number=Inf), adj.P.Val < 0.6) %>% nrow` DE genes.
+
+We will continue with a threshold of 0.6 for the gene set enrichment.
+
+```{r day28_gse, warning=FALSE}
+runGSE(day28Fit, "pathwaze_CD3TCRsigHi_Day28_Hallmark", h, unadjustedPThreshold=0.05,
+       netDown=FALSE, w=7, h=6, deSigLevel=0.99)
+runGSE(day28Fit, "pathwaze_CD3TCRsigHi_Day28_C2", c2, unadjustedPThreshold=0.05,
+       netDown=FALSE, w=7, h=6, deSigLevel=0.99)
+```
+
+## `R` session information
+
+```{r, echo_session_info}
+sessionInfo()
+```

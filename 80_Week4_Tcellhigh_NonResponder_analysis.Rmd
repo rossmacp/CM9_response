@@ -1,0 +1,1086 @@
+---
+title: "CA209009 Week 4 CD3TCR score-high non-Responder"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+
+##_ Set knitr root directory to correspond to project working directory 
+##_  setting based on structure with code in <project dir>/code
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+## Procedure
+
+1. Get RMA expression values for 55 Week4 samples for T cell receptor (TCR) genes
+1. Calculate T cell score = CD3 signature score for 55
+1. Reality check association with Response
+1. Reality check that other immune genes are coexpressed with TCR
+1. Take above median samples = 27 CD3 signature score High
+1. limma Association with Response within 27 CD3 signature score-high subset
+1. Heatmap of the negatively Assoc IRIS genes in 27 samples
+1. Heatmaps of the IFN HALLMARK sets in 27 samples
+1. Boxplots of key genes against Response within 27 CD3 signature score-high subset
+1. Save results of reality check and Response Association
+
+## Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(ComplexHeatmap)
+library(circlize)
+library(limma)
+library(knitr)
+library(ggpubr)
+```
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+
+
+```
+
+```{r palettes}
+
+
+# shape map for prior therapy
+shape_prior <- c("PriorTherapy_Yes" = 16, 
+              "PriorTherapy_No" = 18)
+
+
+# color map for response
+color_response <- c("Not20pct" = "black", 
+              "20pctDec" = "goldenrod2")
+
+```
+
+
+
+
+## Data Sources
+
+```{r loaddata}
+
+# Expression values
+rma_file <- paste(data_dir, "CA209009-tumorAffy-HGU219_HS_ENTREZG.rma", sep = "/")
+rma <- read_tsv(rma_file)
+
+# Make rma Colnames match "Assay.Name" in sdrf annotation
+colnames(rma) <- sub("ENTREZG-", "", colnames(rma))
+rma <- rename(rma, Probeset = X1)
+
+# SDRF (Sample and Data Relationship Format) file from Array Express
+# NB move from stash when finalized (eg mpct biopsy added)
+sdrf_file <- paste(data_dir, "E-MTAB-3218 sdrf_response.txt", sep = "/")
+sdrf <- read_tsv(sdrf_file)
+sdrf$Response20pct <- factor(sdrf$Response20pct, levels = c("Not20pct","20pctDec", "NE"))
+sdrf$individual <- as.factor(sdrf$individual)
+sdrf$clinical.history <- as.factor(sdrf$clinical.history)
+
+# Affymetrix probeset to Gene annotation
+probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
+probeset <- read_tsv(probeset_file)
+
+# Object containing Probesets for Geneset of T cell receptor transcripts
+tcellprobesets <- probeset %>%
+	filter(!is.na(probeset$Geneset_Tcell)) %>%
+	pull(Probeset)
+
+
+```
+
+## Filter Week4 Expression dataset
+ 
+```{r tcell_baseline}
+# Baseline Subject sample Annotation
+sdrfweek4 <- sdrf %>%
+	filter(biopsy.timepoint == "Week4", Response20pct != "NE")
+
+# Select 55 week4 Array columns plus Probeset column
+# 'Select' gets Assay.Name cols in the same order as the sdrf annotation
+# Order is Vital for ComplexHeatmap!! Vital for limma!
+
+rmaweek4 <- select(rma, one_of("Probeset",sdrfweek4$Assay.Name))
+
+# Subset rmascreen data to just the 6 T cell receptor probesets 
+rmaTcell <- rmaweek4[rmaweek4$Probeset %in% tcellprobesets,]
+
+```
+ 
+## Calculation of T-cell score  = CD3 signature score
+
+RMA values for the six T-cell probesets are Z-scored across the 55 Week4 samples. For each Sample, the median of the six Z-scores is the Tcell.Score.  The Tcell.Score is added to the sdrf sample annotation.
+
+```{r tcell_score}
+
+# Transpose rma data to columns, Z score, transpose back to 6 rows, get median of 6, transpose to a sample annotation
+tcellscore<- as.data.frame(t(scale(t(rmaTcell[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "Tcell.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfweek4 <- right_join(sdrfweek4, tcellscore,
+								  by = "Assay.Name")
+```
+
+
+## Association of T cell score with Response
+
+```{r test_association_response}
+
+print(kruskal.test(Tcell.Score ~ Response20pct, data = sdrfweek4))
+
+```
+
+At .05 significance level, we conclude that the CD3 signature in the Responder and Non-Responders are nonidentical populations.
+
+## Association of CD3 signature score with Prior VEGFi therapy
+
+```{r test_association_prior}
+
+print(kruskal.test(Tcell.Score ~ clinical.history, data = sdrfweek4))
+
+```
+
+At .05 significance level, we conclude that the CD3 signature in the Prior-VEGFi versus VEGFi-naive patients are identical populations.
+
+
+## Heatmap of CD3 signature score against clinical annotation
+
+```{r Tcell_heatmap}
+
+# Add the Gene Symbol to the T cell expression data table 
+# so it can be used to label heatmap rows
+rmaTcell2 <-  probeset %>%
+	select(Probeset,Symbol) %>%
+	inner_join(rmaTcell)
+
+# scaled_mat will be the body of the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(select(rmaTcell2, -Probeset, -Symbol))))
+rownames(scaled_mat) = rmaTcell2$Symbol
+
+# Provide column order as Ascending Tcell.Score
+# This works because scaled_mat columns are in same order as SDRF rows
+ordering = order(sdrfweek4$Tcell.Score)
+
+# Top heatmap annotation is Tcell.Score
+ha_top = HeatmapAnnotation(tcell = sdrfweek4$Tcell.Score,
+						   pdl1 = sdrfweek4$PDL1cat,
+						   
+						   col = list(tcell = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+						   			pdl1 = c("0%" = "white", "1to5%" = "red","5+%" = "red")),
+						   annotation_height = unit(c(1,1), "cm"))
+
+#draw(ha_top,1:56)
+
+# Bottom heatmap annotation is response annotation, Prior Therapy, and Pt #
+ha_bottom = HeatmapAnnotation(response = sdrfweek4$Response20pct,
+							  vegf = sdrfweek4$clinical.history,
+							  biopsy = sdrfweek4$BiopsySite,
+							  colname = anno_text(sdrfweek4$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 8)),
+							  col = list(vegf = c("PriorTherapy_Yes"="goldenrod2","PriorTherapy_No"="darkolivegreen4"),
+							  		   response = c("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white"),
+							  		   biopsy = c("LymphNode"  = "goldenrod2",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black",
+							  		   		   "UNKNOWN" = "black")),
+							  na_col = "white",
+							  annotation_height = unit(c(1,1,1,2), "cm"))
+
+#draw(ha_bottom,1:56)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = FALSE,
+						 km = 1,
+						 show_row_names = TRUE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CA209-009: 55 Week4 for 6 TCR genes",
+						 show_column_names = FALSE,
+						 width = unit(7, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(2, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(6, "cm"))
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Week4_CD3sigScore.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("tcell", 
+					{grid.text("CD3sig Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+decorate_annotation("pdl1", 
+					{grid.text("PDL1 category",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+
+
+decorate_annotation("vegf", 
+					{grid.text("Prior VEGFi",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+dev.off()
+```
+
+
+## Reality check: Association analysis
+
+Run limma on all 55 Week4 samples, with Tcell.Score (CD3 signature score) as continuous variable
+
+
+```{r limma}
+
+# make Probeset column into rownames
+data <- rmaweek4 %>% remove_rownames %>% column_to_rownames(var="Probeset")
+
+# Run limma
+design <- model.matrix(~Tcell.Score,sdrfweek4) 
+fit <-lmFit(data, design)
+fit <- eBayes(fit)
+
+kable(summary(decideTests(fit)),
+	  title = "CA209-009: Summary of regression against Week 4 CD3signature score")
+
+```
+
+## Reality check: Categorization of 55 sample results by Immune cell type-association
+
++ Summarize IRIS categories of transcripts significantly associated with Week 4 CD3signature score
+
++ Identify any immune-associated transcripts that are negatively associated with Week 4 CD3signature score (no matter the P value). Examples include ---
+
+```{r IRISsummary}
+
+# Filter and Annotate association hit results
+results <- topTable(fit, coef=2, p.value = 0.05, number=Inf, sort.by = "B") %>% 
+	rownames_to_column(var="Probeset") %>%
+	left_join(select(probeset, -matches("Geneset")))
+
+# Filter and Annotate all negatively-associated immune-associated transcript results
+resultsnegIRIS <- topTable(fit, coef=2, number=Inf, sort.by = "B") %>% 
+	rownames_to_column(var="Probeset") %>%
+	left_join(select(probeset, -matches("Geneset"))) %>%
+	filter(logFC <0 & !is.na(IRIS_Most_Specific))
+
+# Make a summary by direction of correlation and IRIS classes
+upsum <- results %>%
+	filter(logFC >0) %>%
+	count(IRIS_Most_Specific) %>%
+	rename("PositiveAssociation, N=2025" = n)
+
+downsum  <- results %>%
+	filter(logFC < 0) %>%
+	count(IRIS_Most_Specific) %>%
+	rename("NegativeAssociation, N=1627"  = n)
+
+irisassociation <- left_join(upsum,downsum) %>%
+	arrange(match(IRIS_Most_Specific,c("T Cell","B Cell","NK Cell","Lymphoid","Dendritic Cell","Monocyte","Neutrophil","Myeloid","Multiple",NA)))
+	
+kable(irisassociation,
+	  title = "CA209-009: Summary of IRIS classes associated with Week 4 Tcell.Score")
+```
+
+
+## Samples with above median infiltrate = 27 CD3 signature score high
+
+```{r week4_inflamed}
+
+sdrfweek4inflamed <- filter(sdrfweek4, Tcell.Score > median(Tcell.Score) )
+
+#drop the NE level, which messes up limma
+sdrfweek4inflamed$Response20pct <- droplevels(sdrfweek4inflamed$Response20pct)
+
+rmaweek4inflamed <- select(rmaweek4, one_of("Probeset",sdrfweek4inflamed$Assay.Name))
+
+```
+
+The dataset is filtered to the *`r nrow(sdrfweek4inflamed)`* samples with Tcell.Score (CD3 signature score) above median. This dataset contains *`r sum(sdrfweek4inflamed$Response20pct == "20pctDec")`* Responders and *`r sum(sdrfweek4inflamed$Response20pct == "Not20pct")`* non-Responders.
+
+
+```{r PCA}
+
+#Do PCA on all genes for the 27 samples
+#remove probeset name column
+pca27 <- prcomp(t(rmaweek4inflamed[,-1]),center = TRUE, scale = TRUE, tol = 0.25)
+
+
+# combine pca results with sample annotations
+pca27annot <- merge(sdrfweek4inflamed, pca27$x, by.x = "Assay.Name" , by.y = "row.names")
+
+# generate  PCA plot
+plotcount <- nrow(pca27annot)
+
+pcaplot <- pca27annot %>%
+	ggplot() + 
+	geom_point(aes(x = PC2, y = PC3, 
+				   colour = Response20pct),
+			   size = 3, position = position_jitter(15)) + 
+	scale_colour_manual(name = 'Response20pct',
+  					values = setNames(c('black','goldenrod2'),
+  									  c("Not20pct", "20pctDec")))+
+	coord_fixed() + 
+	labs(title = "CA209-009 Week 4 Biopsy: PCA on all genes",
+		 subtitle = paste("Subjects with TCRsignature-high biopsy, N=",plotcount))
+
+pcaplot
+
+```
+
+PCA analysis shows some separation by response using PC2 and PC3.
+
+## Association of Sex with Response
+
+```{r test_association_sex_response}
+
+print(chisq.test(sdrfweek4inflamed$sex, sdrfweek4inflamed$Response20pct, correct=FALSE))
+
+```
+
+At .05 significance level, we conclude that the Sex in the Responder and Non-Responders are identical populations. However there is a trend: the Responder category is majority females, Non-responder is majority males. Hence you will see XIST and RPS4Y as genes with large fold differences between the Response groups.
+
+
+## Response Association analysis on 27 above-median CD3signature samples
+
+Run limma on 27 Week4 samples, with Response as categorical variable
+
+
+```{r limma_inflamed}
+
+# make Probeset column into rownames
+data <- rmaweek4inflamed %>% remove_rownames %>% column_to_rownames(var="Probeset")
+
+# # check the data is already in the same order as the sdrf table. if not.
+# colorder <- sdrfweek4inflamed$Assay.Name
+# data2 <- data[,colorder]
+
+
+#make a design
+design <- model.matrix(~  Response20pct,sdrfweek4inflamed) 
+
+# Run limma
+fit <-lmFit(data, design)
+fit <- eBayes(fit)
+
+
+kable(summary(decideTests(fit)),
+	  title = "CA209-009: Summary of regression against Response in 27 above-median CD3signature Week4")
+
+```
+
+
+
+## Limma results
+
+There are no results which pass the multiple test correction by Benjamini Hochberg.
+
+However since we selected these samples to represent a Tcell profile, the assumption of independence is invalid. Instead we would like to correct for the true number of independent statistical comparisons. Following previous studies, this can be estimated by identifying the number of principal components accounting for 95% of the variance in the data (Gao et al., 2008; Johnson et al., 2010; Tromp et al., 2018). We apply this PC-based Bonferroni correction to derive the level of significance.
+
+```{r pca_variance}
+
+# PC-based multiple testing correction method
+pc <- prcomp(t(data), scale.=FALSE)  # already scaled
+
+# Calculate the proportion of variance accounted for by each PC
+proportionVariance <- (pc$sdev ^ 2) / sum(pc$sdev ^ 2)
+
+# Find number of PCs with cumulative proportion of variance of at least 95%
+nPC95Var <- min(which(cumsum(proportionVariance) > 0.95))
+
+rm(pc, proportionVariance)  # clear namespace
+
+```
+
+The number of PCs with cumulative proportion of variance of at least 95% is *`r nPC95Var`* (22). We use this estimate as the number of independent statistical comparisons for Bonferroni correction to derive the level of significance.
+
+```{r limma_CD3TCRhi_pca_bonferroni}
+
+# Filter and Annotate association hit results
+resultsTCRhi <- topTable(fit, coef=2,  number=Inf, sort.by = "B") %>% 
+	rownames_to_column(var="Probeset") %>%
+	left_join(select(probeset, -matches("Geneset")))
+
+#Do math here to get PC-based Bonferroni correction 
+
+resultsTCRhi<- resultsTCRhi%>%
+	mutate(p_adj_pc_bonferroni = P.Value*nPC95Var)
+
+#fix P>1
+resultsTCRhi$p_adj_pc_bonferroni <-	if_else(resultsTCRhi$p_adj_pc_bonferroni>1,
+											1,
+											resultsTCRhi$p_adj_pc_bonferroni)
+
+resultsTCRhip01 <- resultsTCRhi %>% 
+					   filter(P.Value <0.01,
+					   abs(logFC) > 0.263) %>%
+				arrange(logFC) 
+
+```
+
++ Save all results
++ Save results by P <0.01 and Fold > 1.2
+
+
+## Categorization of 27 sample results by Immune cell type-association
+
++ Filter Tcell.Score-high results to IRIS genes with P <0.1 and Fold > 1.3
++ Summarize IRIS categories of these 62 transcripts
+
+
+```{r IRISsummary_TCThi}
+
+resultsTCRhiiris <- resultsTCRhi %>% 
+				filter(!is.na(IRIS_Most_Specific), 
+					   P.Value <0.1,
+					   abs(logFC) > 0.3785) %>%
+				arrange(logFC) 
+
+
+# Make a summary by direction of correlation and IRIS classes
+upsum <- resultsTCRhiiris %>%
+	filter(logFC >0) %>%
+	count(IRIS_Most_Specific) %>%
+	rename("PositiveAssociation, N=39" = n)
+
+downsum  <- resultsTCRhiiris %>%
+	filter(logFC < 0) %>%
+	count(IRIS_Most_Specific) %>%
+	rename("NegativeAssociation, N=23"  = n)
+
+irisassociationhitsTCRhi <- full_join(upsum,downsum) %>%
+	arrange(match(IRIS_Most_Specific,c("T Cell","B Cell","NK Cell","Lymphoid","Dendritic Cell","Monocyte","Neutrophil","Myeloid","Multiple",NA)))
+	
+kable(irisassociationhitsTCRhi,
+	  title = "CA209-009: Summary of IRIS classes associated with Response in Week 4 Tcell.Score-High Patients")
+```
+
+
+## Heatmap of 23 IRIS genes higher in Non-Responders among 27 CD3 signature score-high
+
+```{r heatmap_negIRIS}
+
+negiris <- resultsTCRhiiris %>%
+	filter(logFC <0) %>%
+	pull(Probeset)
+
+# Filter the 27 CD3 signature score high Array rma data to 23 probesets 
+rma23 <- rmaweek4inflamed[rmaweek4inflamed$Probeset %in% negiris, ]
+
+# Add the Gene Symbol to the 11gene expression data table 
+# so it can be used to label heatmap rows
+rma23 <-  probeset %>%
+	select(Probeset,Symbol) %>%
+	inner_join(rma23)
+
+#make a row annotation matrix in the rma datset order
+#row23 <- left_join(rma23[,1], probeset[,1:5], by = "Probeset")
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+# You have to remove the two annotation columns Probeset,Symbol
+scaled_mat = t(scale(t(rma23[,-c(1:2)])))
+rownames(scaled_mat) = rma23$Symbol
+
+# Top heatmap annotation is tumor burden reduction; MPCT and MPCT biopsy
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(sdrfweek4inflamed$MPCTBiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(sdrfweek4inflamed$MPCTBiopsy > -19, "black", "goldenrod2"))),
+						   annotation_height = unit(c(3), "cm"))
+
+# draw(ha_top,1:55)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = sdrfweek4inflamed$Response20pct,
+							  Tcell = sdrfweek4inflamed$Tcell.Score,
+							  colname = anno_text(sdrfweek4inflamed$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  col = list(Tcell = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+							  		   response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5,.5), "cm"))
+
+# draw(ha_bottom,1:56)
+
+# Provide column order as descending MPCT (ie waterfall plot)
+ordering = order(-sdrfweek4inflamed$MPCTrank)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-1, 0, 1), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = FALSE,
+						 show_row_names = TRUE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CA209-009: 27 CD3sig-high samples, 23 IRIS genes",
+						 show_column_names = FALSE,
+						 width = unit(7, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(3, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(3, "cm")) 
+# +
+# 	rowAnnotation(IRIS = row11$IRIS_Most_Specific,
+# 				  col = list(IRIS = 
+# 				  		   	c(`T Cell` = "darkolivegreen1",
+# 				  		   	  `NK Cell` = "darkolivegreen1",
+# 				  		   	  `B Cell` = "darkolivegreen1",
+# 				  		   	  Lymphoid = "darkolivegreen1",
+# 				  		   	  `Dendritic Cell` = "blue",
+# 				  		   	  Neutrophil = "blue",
+# 				  		   	  Monocyte = "blue",
+# 				  		   	  Myeloid = "blue",
+# 				  		   	  Multiple = "goldenrod2")),
+# 				  na_col = "white",
+# 				  width = unit(0.5, "cm"),
+# 				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Week4_CD3sigHigh_NegIRIS.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(2, 8, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("Tcell", 
+					{grid.text("CD3sig Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("barplot2", 
+					{grid.text("Week4 Lesion\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+
+
+```
+
+
+
+## Heatmap of the HALLMARK_INTERFERON_ALPHA_RESPONSE in the 27 CD3 signature score-high
+
+```{r heatmap_HALLMARK_IFNA}
+
+
+# IFNa dataset, 95 genes
+ifna_probes <- probeset %>%
+	filter(grepl("IFNA", Geneset_HALLMARK)) %>%
+	pull(Probeset)
+
+# Filter the 27 CD3 signature score high Array rma data to 95 ifna probesets 
+rma_ifna <- rmaweek4inflamed[rmaweek4inflamed$Probeset %in% ifna_probes, ]
+
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+# You have to remove the  annotation column Probeset
+scaled_mat_ifna = t(scale(t(rma_ifna[,-1])))
+
+
+
+# Top heatmap annotation is tumor burden reduction; MPCT and MPCT biopsy
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(sdrfweek4inflamed$MPCTBiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(sdrfweek4inflamed$MPCTBiopsy > -19, "black", "goldenrod2"))),
+						   annotation_height = unit(c(3), "cm"))
+
+# draw(ha_top,1:55)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = sdrfweek4inflamed$Response20pct,
+							  Tcell = sdrfweek4inflamed$Tcell.Score,
+							  colname = anno_text(sdrfweek4inflamed$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  col = list(Tcell = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+							  		   response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5,.5), "cm"))
+
+# draw(ha_bottom,1:56)
+
+# Provide column order as descending MPCT (ie waterfall plot)
+ordering = order(-sdrfweek4inflamed$MPCTrank)
+
+heatmap_object = Heatmap(scaled_mat_ifna,
+						 col = colorRamp2(c(-1, 0, 1), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 show_row_names = FALSE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CM9: 27 CD3TCR-high samples, HALLMARK_IFNA",
+						 show_column_names = FALSE,
+						 width = unit(7, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(3, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(3, "cm")) 
+# +
+# 	rowAnnotation(IRIS = row11$IRIS_Most_Specific,
+# 				  col = list(IRIS = 
+# 				  		   	c(`T Cell` = "darkolivegreen1",
+# 				  		   	  `NK Cell` = "darkolivegreen1",
+# 				  		   	  `B Cell` = "darkolivegreen1",
+# 				  		   	  Lymphoid = "darkolivegreen1",
+# 				  		   	  `Dendritic Cell` = "blue",
+# 				  		   	  Neutrophil = "blue",
+# 				  		   	  Monocyte = "blue",
+# 				  		   	  Myeloid = "blue",
+# 				  		   	  Multiple = "goldenrod2")),
+# 				  na_col = "white",
+# 				  width = unit(0.5, "cm"),
+# 				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Week4_CD3sigHigh_IFNA.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(2, 8, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("Tcell", 
+					{grid.text("CD3TCR Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("barplot2", 
+					{grid.text("Week4 Lesion\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+
+
+```
+
+
+## Heatmap of the HALLMARK_INTERFERON_GAMMA_RESPONSE in the 27 CD3 signature score-high
+
+```{r heatmap_HALLMARK_IFNG}
+
+# IFNG dataset, 196 genes
+ifng_probes <- probeset %>%
+	filter(grepl("IFNG", Geneset_HALLMARK)) %>%
+	pull(Probeset)
+
+# Filter the 27 CD3 signature score high Array rma data to 196 ifng probesets 
+rma_ifng <- rmaweek4inflamed[rmaweek4inflamed$Probeset %in% ifng_probes, ]
+
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+# You have to remove the  annotation column Probeset
+scaled_mat_ifng = t(scale(t(rma_ifng[,-1])))
+
+# Top heatmap annotation is tumor burden reduction; MPCT and MPCT biopsy
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(sdrfweek4inflamed$MPCTBiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(sdrfweek4inflamed$MPCTBiopsy > -19, "black", "goldenrod2"))),
+						   annotation_height = unit(c(3), "cm"))
+
+# draw(ha_top,1:55)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = sdrfweek4inflamed$Response20pct,
+							  Tcell = sdrfweek4inflamed$Tcell.Score,
+							  colname = anno_text(sdrfweek4inflamed$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  col = list(Tcell = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+							  		   response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5,.5), "cm"))
+
+# draw(ha_bottom,1:56)
+
+# Provide column order as descending MPCT (ie waterfall plot)
+ordering = order(-sdrfweek4inflamed$MPCTrank)
+
+heatmap_object = Heatmap(scaled_mat_ifng,
+						 col = colorRamp2(c(-1, 0, 1), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 show_row_names = FALSE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CM9: 27 CD3TCR-high samples, HALLMARK_IFNG",
+						 show_column_names = FALSE,
+						 width = unit(7, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(3, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(3, "cm")) 
+# +
+# 	rowAnnotation(IRIS = row11$IRIS_Most_Specific,
+# 				  col = list(IRIS = 
+# 				  		   	c(`T Cell` = "darkolivegreen1",
+# 				  		   	  `NK Cell` = "darkolivegreen1",
+# 				  		   	  `B Cell` = "darkolivegreen1",
+# 				  		   	  Lymphoid = "darkolivegreen1",
+# 				  		   	  `Dendritic Cell` = "blue",
+# 				  		   	  Neutrophil = "blue",
+# 				  		   	  Monocyte = "blue",
+# 				  		   	  Myeloid = "blue",
+# 				  		   	  Multiple = "goldenrod2")),
+# 				  na_col = "white",
+# 				  width = unit(0.5, "cm"),
+# 				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Week4_CD3sigHigh_IFNG.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(2, 8, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("Tcell", 
+					{grid.text("CD3TCR Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("barplot2", 
+					{grid.text("Week4 Lesion\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+
+
+```
+
+
+## Heatmap of the P<0.01 HALLMARK_INTERFERON_GAMMA_RESPONSE in the 27 CD3 signature score-high
+
+```{r heatmap_p01_HALLMARK_IFNG}
+
+# IFNG dataset, 196 genes
+ifng_probes <- probeset %>%
+	filter(grepl("IFNG", Geneset_HALLMARK)) %>%
+	pull(Probeset)
+
+#filter to P<0.1
+ifng_probes_01 <- resultsTCRhi%>%
+	filter(P.Value <0.1&
+		   	Probeset %in% ifng_probes&
+		   	logFC<0)%>%
+	pull(Probeset)
+
+# Filter the 27 CD3 signature score high Array rma data to 22 ifng 0.1 probesets 
+rma_ifng_01 <- rmaweek4inflamed[rmaweek4inflamed$Probeset %in% ifng_probes_01, ]
+
+
+# Add the Gene Symbol to the gene expression data table 
+# so it can be used to label heatmap rows
+rma_ifng_01 <-  probeset %>%
+	select(Probeset,Symbol) %>%
+	inner_join(rma_ifng_01)
+
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+# You have to remove the two annotation columns Probeset,Symbol
+scaled_mat_ifng_01 = t(scale(t(rma_ifng_01[,-c(1:2)])))
+rownames(scaled_mat_ifng_01) = rma_ifng_01$Symbol
+
+# Top heatmap annotation is tumor burden reduction; MPCT and MPCT biopsy
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(sdrfweek4inflamed$MPCTBiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(sdrfweek4inflamed$MPCTBiopsy > -19, "black", "goldenrod2"))),
+						   annotation_height = unit(c(2), "cm"))
+
+# draw(ha_top,1:55)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = sdrfweek4inflamed$Response20pct,
+							  Tcell = sdrfweek4inflamed$Tcell.Score,
+							  colname = anno_text(sdrfweek4inflamed$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  col = list(Tcell = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+							  		   response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.25,.25,.5), "cm"))
+
+# draw(ha_bottom,1:56)
+
+# Provide column order as descending MPCT (ie waterfall plot)
+ordering = order(-sdrfweek4inflamed$MPCTrank)
+
+
+#Heatmap(mat, name = "mat", width = unit(8, "cm"), height = unit(8, "cm"))
+heatmap_object = Heatmap(scaled_mat_ifng_01,
+						 col = colorRamp2(c(-1, 0, 1), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 show_row_names = TRUE,
+						 row_names_gp = gpar(fontsize = 8),
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CM9 Day28: 27 CD3TCR-high, HALLMARK_IFNG 22 P<0.1",
+						 show_column_names = FALSE,
+						 width = unit(8, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(2, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(1, "cm")) 
+# +
+# 	rowAnnotation(IRIS = row11$IRIS_Most_Specific,
+# 				  col = list(IRIS = 
+# 				  		   	c(`T Cell` = "darkolivegreen1",
+# 				  		   	  `NK Cell` = "darkolivegreen1",
+# 				  		   	  `B Cell` = "darkolivegreen1",
+# 				  		   	  Lymphoid = "darkolivegreen1",
+# 				  		   	  `Dendritic Cell` = "blue",
+# 				  		   	  Neutrophil = "blue",
+# 				  		   	  Monocyte = "blue",
+# 				  		   	  Myeloid = "blue",
+# 				  		   	  Multiple = "goldenrod2")),
+# 				  na_col = "white",
+# 				  width = unit(0.5, "cm"),
+# 				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Week4_CD3sigHigh_IFNG_p01.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(20, 30, 40,20), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("Tcell", 
+					{grid.text("CD3TCR Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("barplot2", 
+					{grid.text("Week4 Lesion\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+
+
+```
+
+## Boxplot of selected gene expression
+
+```{r boxplot}
+
+# Define the desired probeset and grab the gene Symbol
+probesetwanted <- "958_at"
+genewanted <- as.character(probeset[probeset$Probeset == probesetwanted, 4])
+
+#get the P value from the limma
+Pvalue_selectedGene <- resultsTCRhi%>%
+	filter(Probeset == probesetwanted)%>%
+	pull(P.Value)
+
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+onegene <- rmaweek4inflamed %>% 
+	filter(rmaweek4inflamed$Probeset == probesetwanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrfweek4inflamed, 
+					 c("Assay.Name", "Response20pct", 
+					   "individual", "clinical.history", "Tcell.Score")))
+
+#count the samples
+plotcount <- nrow(onegene)
+
+
+boxplotTCRhi <- onegene %>%
+	ggplot(aes(x = Response20pct, y = RMA))+
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = Response20pct, shape = clinical.history),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=1, jitter.width = 0.2)) +
+	scale_colour_manual(name = 'Response',
+						values = color_response) +
+	scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+	labs(title = paste("CA209-009 Week 4 Biopsy: ",probesetwanted, "=", genewanted),
+		 subtitle = paste("Subjects with above median CD3sig score, N=",plotcount),
+		 x = "Response Category",
+		 y = "Expression signal, RMA") +
+	scale_x_discrete(labels=c("Not20pct" = "NonResponder\nN = 16", 
+							  "20pctDec" = "Responder\nN = 11"))+
+	scale_y_continuous(breaks=seq(6,9,1),
+					   limits=c(6, 9))+
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE)) +
+	  geom_text(data=data.frame(x=0.0,y=8.5), 
+  		  aes(x, y), 
+  		  label= paste(genewanted,"\nP=",round(Pvalue_selectedGene,4)),
+  		  size = 6,
+  		  hjust = "inward")+
+	theme_dj(14)
+
+print(boxplotTCRhi)
+```
+
+## Outputs
+
+```{r outputs}
+
+## 55 Sample analysis for TCR-signature association
+
+# Table of all genes for 55 sample analysis
+# Count the probesets and make an output filename
+counttcellhits <- nrow(results)
+tcellhits_file <- paste0(results_dir,"/",
+					"GEP_Table_BiopsyWeek4_55samples_CD3sigAssoc_",counttcellhits,"prbs",".txt")
+
+# Write tsv file of annotation and statistics for 55 sample analysis
+write_tsv(results, tcellhits_file)
+
+# Write tsv file of IRIS counts for the significant 3652prbs for 55 sample analysis
+tcelliris_file <- paste0(results_dir,"/",
+						"GEP_Table_BiopsyWeek4_55samples_CD3sigAssoc_IRISsummary",".txt")
+
+write_tsv(irisassociation, tcelliris_file)
+
+# All negatively-associated immune-associated transcript results
+# Count the probesets and make an output filename
+countnegiris <- nrow(resultsnegIRIS)
+negIRIS_file <- paste0(results_dir,"/",
+					"GEP_Table_BiopsyWeek4_55samples_CD3sigAssoc_NegativeImmune_",countnegiris,"prbs",".txt")
+
+write_tsv(resultsnegIRIS, negIRIS_file)
+
+#########################################################################################
+## 27 Sample analysis for Response
+	
+# Table of all genes for 27 sample analysis
+# Count the probesets and make an output filename
+	
+numberTCRhi <- nrow(resultsTCRhi)
+
+TCRhihits_file <- paste0(results_dir,"/",
+					"GEP_Table_BiopsyWeek4_27samples_CD3sigHigh_",numberTCRhi,"prbs",".txt")
+
+# Write tsv file of annotation and statistics for 27 sample analysis
+write_tsv(resultsTCRhi, TCRhihits_file)
+
+
+# Table of p01 fold 1.2 genes for 27 sample analysis
+# Count the probesets and make an output filename
+	
+numberTCRhip01 <- nrow(resultsTCRhip01)
+
+TCRhihitsp01_file <- paste0(results_dir,"/",
+					"GEP_Table_BiopsyWeek4_27samples_CD3sigHigh_P01_",numberTCRhip01,"prbs",".txt")
+
+# Write tsv file of annotation and statistics for 27 sample analysis
+write_tsv(resultsTCRhip01, TCRhihitsp01_file)
+
+# Write tsv file of IRIS counts for the sort-of significant 63prbs for 27 sample analysis
+TCRhiiris_file <- paste(results_dir,
+						"GEP_Table_BiopsyWeek4_27samples_CD3sigHigh_IRISsummary.txt",
+						sep = "/")
+
+write_tsv(irisassociationhitsTCRhi, TCRhiiris_file)
+
+# Save box plot of selected gene in 27 TCR-high patients
+boxTCRhi_file <- paste(results_dir, "/GEP_Boxplot_BiopsyWeek4_27samples_CD3sigHigh_",
+					   paste0(probesetwanted,"_",genewanted),
+					   ".png",
+					   sep="")
+
+ggsave(boxplotTCRhi, file = boxTCRhi_file, width=6, height=6,
+	   units = "in", dpi = 96)
+
+#Save limma fit as an rds object for gene set analysis
+fit_file <-  paste(work_dir,
+				   "checkmate9_CD3TCRsig_Day28_Response_limma.rds",
+						sep = "/")
+
+write_rds(fit, fit_file)
+
+```
+
+
+**Correlation with CD3 signature in 55 Week4**
+
++ *`r tcellhits_file`* All probesets versus Tcell.Score 
++ *`r tcelliris_file`* Breakdown of IRIS annotation among 3652 Transcripts significant
++ *`r negIRIS_file`* All IRIS annotation negatively associated with Tcell.Score, no matter P value
+
+**Correlation with Response in 27 high-CD3 signature Score at Week4**
+
++ *`r TCRhihits_file`* All probesets versus Response
++ *`r TCRhihitsp01_file`* P0.01, Fold 1.2 probesets versus Response
++ *`r TCRhiiris_file`* Breakdown of annotation among 63 IRIS Transcripts significant at P<0.1, fold 1.3
++ *`r boxTCRhi_file`* Box plot of gene of interest
++ *`r fit_file`* limma fit object for Gene set analysis by camera/pathwaze
+
+
+
+

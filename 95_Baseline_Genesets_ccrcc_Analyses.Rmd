@@ -1,0 +1,1639 @@
+---
+title: "CA209009 baseline Geneset scores and ccrcc group analysis"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+```
+
+## Procedure
+
+1. Open sdrf with scores and clusters assigned
+1. Calculate all score association with Response (ROC)
+1. Calculate publication score association with Response (ROC)
+1. Objective response rate Table for PBRM1
+1. Fisher exact for PBRM1 groups
+1. Objective response rate Table for ccrcc
+1. Fisher exact for ORR in ccrcc groups
+1. Fisher exact for ORR ccrcc4 vs rest
+1. Objective response rate Graph for ccrcc
+1. PBRM1 mutant rate Table for ccrcc groups
+1. Fisher exact for PBRM1 mutant rate in ccrcc groups
+1. PBRM1 mutant rate Graph for ccrcc groups
+1. Odds ratio for PBRM1 mutant vs WT
+1. Odds ratio for ccrcc4 vs ccrcc1/2/3
+1. Odds ratio for signature scores
+1. Merge Odss ratios to single table
+1. Forest plot of all Odds Ratios
+1. Scatterplots and boxplots for comparisons of interest
+1. Heatmap showing all clustered Signature scores versus waterfall plot
+1. Heatmap showing publication clustered Signature scores versus waterfall plot
+
+
+## Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(ComplexHeatmap)
+library(circlize)
+library(limma)
+library(knitr)
+library(ggpubr)
+library(broom)
+library(pROC)
+library(plotROC)
+```
+
+
+```{r palettes}
+
+ccrcc_colors = c("ccrcc1"= "black",
+				 "ccrcc2"= "red",
+				 "ccrcc3"= "grey",
+				 "ccrcc4"= "goldenrod")
+
+
+```
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+#Don Jackson
+
+
+## Functions by Peter Szabo
+
+contrastTable <- function(object, ...)
+  UseMethod("contrastTable")
+
+contrastTable.coxph <- function(object, linmat, level = 0.95, df = 1, rnames =
+                                  dimnames(linmat)[[1]]) {
+  #
+  # DESCRIPTION:
+  #    Computes point estimates and confidence intervals, and Wald
+  #    test statistics and p-values, for specified contrasts (or
+  #    more generally, linear combinations) of coefficients from a
+  #    fitted Cox model (coxph object). Typically these contrasts
+  #    will represent some sort of hazard ratio (HR).
+  #
+  #    This is a method for the generic function contrastTable for
+  #    objects inheriting from class "coxph".
+  #
+  # ARGUMENTS:
+  # object  a coxph object
+  # linmat  numeric matrix with one row per contrast and one column
+  #    corresponding to each coefficient in object.
+  # level  desired confidence level. Default is 0.95, giving 95%
+  #    confidence intervals for the contrasts.
+  # df  a vector of positive integers, giving the degrees of
+  #    freedom for the chi-squared distribution used for computing
+  #    the Wald test p-values. The default is 1. Must have length
+  #    one, in which case that value is used for all tests, or
+  #    length nrow(linmat). If you're unsure what value to use for
+  #    a particular contrast, consult a statistician. If you ARE a
+  #    statistician, consult a different statistician. Has no
+  #    influence on HR point and interval estimates.
+  # rnames  character vector giving names of the requested
+  #    contrasts, used as rownames in the return value. Default is
+  #    row names of linmat.
+  #
+  # VALUE:
+  #    a numeric matrix with one row per contrast, and columns
+  #    "HR", "logHR", "SE.logHR", "lo.logHR", "up.logHR", "level",
+  #    "WaldStat", and "Pvalue".
+  #
+  ###
+  # Argument checking
+  ###
+  if (length(rnames) == 0) rnames <- character(0)
+  if (!is.matrix(linmat))
+    stop("linmat must be a matrix.")
+  ncon <- nrow(linmat)
+  if (ncon == 0) return(NULL)
+  b <- coef(object)
+  if (ncol(linmat) != length(b))
+    stop(paste("linmat must have", length(b), "columns."))
+  if (length(df) != 1 && length(df) != ncon)
+    stop(paste("df must have length 1 or ", ncon, ".", sep = ""))
+  if (length(level) != 1)
+    stop("level must have length 1.")
+  ###
+  # Compute useful stuff
+  ###   
+  loghr <- linmat %*% b
+  hrest <- exp(loghr)
+  se.loghr <- sqrt(diag(linmat %*% object$var %*% t(linmat)))
+  qqq <- qnorm( 1 - ( (1 - level)/2 ) )
+  lo <- loghr - qqq * se.loghr
+  hi <- loghr + qqq * se.loghr
+  waldval <- loghr/se.loghr
+  pwald <- 1 - pchisq(waldval^2, df)
+  ###
+  # Wrap it up pretty and go home
+  ###
+  cnames <- c( "HR", "logHR", "SE.logHR", "lo.logHR", "up.logHR", "level",
+               "WaldStat", "Pvalue" )
+  level <- rep(level, ncon)
+  out <- c(hrest, loghr, se.loghr, lo, hi, level, waldval, pwald)
+  out <- array(out, c(ncon, round(length(out)/ncon)), list(rnames, cnames))
+  out
+}
+
+
+
+
+
+contrastTable.glm <- function(object, linmat, level = 0.95, df = 1, rnames =
+                                dimnames(linmat)[[1]]) {
+  #
+  # DESCRIPTION:
+  #    Computes point estimates and confidence intervals, and Wald
+  #    test statistics and p-values, for specified contrasts (or
+  #    more generally, linear combinations) of coefficients from a
+  #    fitted Cox model (coxph object). Typically these contrasts
+  #    will represent some sort of hazard ratio (HR).
+  #
+  #    This is a method for the generic function contrastTable for
+  #    objects inheriting from class "coxph".
+  #
+  # ARGUMENTS:
+  # object  a coxph object
+  # linmat  numeric matrix with one row per contrast and one column
+  #    corresponding to each coefficient in object.
+  # level  desired confidence level. Default is 0.95, giving 95%
+  #    confidence intervals for the contrasts.
+  # df  a vector of positive integers, giving the degrees of
+  #    freedom for the chi-squared distribution used for computing
+  #    the Wald test p-values. The default is 1. Must have length
+  #    one, in which case that value is used for all tests, or
+  #    length nrow(linmat). If you're unsure what value to use for
+  #    a particular contrast, consult a statistician. If you ARE a
+  #    statistician, consult a different statistician. Has no
+  #    influence on HR point and interval estimates.
+  # rnames  character vector giving names of the requested
+  #    contrasts, used as rownames in the return value. Default is
+  #    row names of linmat.
+  #
+  # VALUE:
+  #    a numeric matrix with one row per contrast, and columns
+  #    "HR", "logHR", "SE.logHR", "lo.logHR", "up.logHR", "level",
+  #    "WaldStat", and "Pvalue".
+  #
+  ###
+  # Argument checking
+  ###
+  if (length(rnames) == 0) rnames <- character(0)
+  if (!is.matrix(linmat))
+    stop("linmat must be a matrix.")
+  ncon <- nrow(linmat)
+  if (ncon == 0) return(NULL)
+  b <- coef(object)
+  if (ncol(linmat) != length(b))
+    stop(paste("linmat must have", length(b), "columns."))
+  if (length(df) != 1 && length(df) != ncon)
+    stop(paste("df must have length 1 or ", ncon, ".", sep = ""))
+  if (length(level) != 1)
+    stop("level must have length 1.")
+  ###
+  # Compute useful stuff
+  ###   
+  logor <- linmat %*% b
+  hrest <- exp(logor)
+  se.logor <- sqrt(diag(linmat %*% summary(object)$cov.scaled %*% t(linmat)))
+  qqq <- qnorm( 1 - ( (1 - level)/2 ) )
+  lo <- logor - qqq * se.logor
+  hi <- logor + qqq * se.logor
+  waldval <- logor/se.logor
+  pwald <- 1 - pchisq(waldval^2, df)
+  ###
+  # Wrap it up pretty and go home
+  ###
+  cnames <- c( "OR", "logOR", "SE.logOR", "lo.logOR", "up.logOR", "level",
+               "WaldStat", "Pvalue" )
+  level <- rep(level, ncon)
+  out <- c(hrest, logor, se.logor, lo, hi, level, waldval, pwald)
+  out <- array(out, c(ncon, round(length(out)/ncon)), list(rnames, cnames))
+  out
+}
+
+
+```
+
+## Data Sources
+
+```{r load_data}
+
+#SDRF (Sample and Data Relationship Format) file with signature scores
+scores_file  <- paste0(results_dir, "/GEP_Table_BiopsyScreen_GEPSignatures_sdrf.txt")
+
+sdrfScreen <- read_tsv(scores_file)
+
+sdrfScreen$Response20pct <- as.factor(sdrfScreen$Response20pct)
+sdrfScreen$individual <- as.factor(sdrfScreen$individual)
+sdrfScreen$clinical.history <- as.factor(sdrfScreen$clinical.history)
+
+
+
+```
+
+SDRF (Sample and Data Relationship Format) file of Screen samples with signature scores:
+
++*`r scores_file`*
+
+```{r load_pbrm1}
+
+# Patient Annotation
+clinicalData_file <- paste(data_dir, "CM9_Patient_Annotation.txt", sep = "/" )
+clinicalData <- read_tsv(clinicalData_file)
+
+clinicalData_pbrm1 <- clinicalData%>%
+	filter(!is.na(PBRM1),
+		   Response20pct != "NE")
+
+clinicalData_pbrm1$PBRM1_status <- NA
+clinicalData_pbrm1$PBRM1_status <- "Mutant"
+clinicalData_pbrm1$PBRM1_status[clinicalData_pbrm1$PBRM1 == "WT"] <- "WT"
+clinicalData_pbrm1$PBRM1_status[clinicalData_pbrm1$PBRM1 == "Missense_Mutation"] <- "WT"
+
+clinicalData_pbrm1$PBRM1_status <- factor(clinicalData_pbrm1$PBRM1_status,
+										  levels = c("WT","Mutant" ))
+
+```
+
+Clinical data including PBRM1 status for all patients
+
++*`r clinicalData_file`*
+
+Created factor(clinicalData_pbrm1$PBRM1_status, levels = c("WT","Mutant" )) where "WT" includes one missense mutant, and "Mutant" is treuncation mutations.
+
+
+## ROC for All Signature scores
+
+ROC analysis requires a binary response metric
+
++ Response20pct=="Not20pct" <- 0
++ Response20pct=="20pctDec" <- 1
+
+
+```{r ROC_all, length = 8in, width = 7in}
+
+
+sdrfScreen$OR_num <- NA
+sdrfScreen$OR_num[which(sdrfScreen$Response20pct=="Not20pct")] <- 0
+sdrfScreen$OR_num[which(sdrfScreen$Response20pct=="20pctDec")] <- 1
+
+comp_sign <-c("ccrcc4.Score",
+#			  "HIF1A.Score",
+			  "Merck18.Score", 
+			  "CD3TCR.Score", 
+			  "IM150_Teff.Score", 
+			  "IM150_Angio.Score",
+			  "Fuhrman.Score",
+			  "Adenosine.Score",
+			  "IM150_MyeloidInfl.Score",
+#			  "Ad_Short.Score",
+#			  "Ad_RNAseq.Score",
+				"ccrcc2.Score",
+				"BMS.Score",
+"EMTstroma.Score",
+"Javelin.Score")
+
+df_comp <- NULL  
+  df_data <- NULL
+  
+for(i in comp_sign){
+  df_comp <- rbind(df_comp, data.frame("BM"=i, "d"=sdrfScreen$OR_num, m=sdrfScreen[[i]]))  
+
+     roc_marker <- roc(formula=sdrfScreen[["OR_num"]]~sdrfScreen[[i]],percent=TRUE,
+     				  direction = "<", #my addition to keep it AUC
+                    # arguments for ci
+                    ci=TRUE, boot.n=1000, ci.alpha=0.95, stratified=FALSE)
+      
+      label <-  paste0("N= ",nrow(sdrfScreen[which(!is.na(sdrfScreen[[i]])), ]), ", AUC: ", round(roc_marker$auc, 2), 
+                   "% (", round(roc_marker$ci[1], 2),"% -",round(roc_marker$ci[3], 2),"%)" )
+      
+      #adding a separate column to allow sort by AUC
+      AUC <- round(roc_marker$auc, 2)
+  
+      df_data<- rbind(df_data, data.frame("Biomarker"=i, "Stat"=label, "AUC" = AUC))
+  
+  }
+  
+
+#ROC all on one plot  
+ROCall <- df_comp%>%
+	filter(BM != "BMS.Score")%>%
+		ggplot(aes(d = d, m = m, colour=BM)) + 
+	geom_roc() + 
+    style_roc(xlab = "1 - Specificity", ylab= "Sensitivity" ) +
+	coord_equal()+ggtitle("CM009 ROC Analysis")
+  
+
+# ROC facetted by Signature score
+ROCfacet <- ggplot(df_comp, aes(d = d, m = m, color="black")) + 
+	geom_roc() + 
+    style_roc(xlab = "1 - Specificity", ylab= "Sensitivity" ) +
+	coord_equal() +
+	ggtitle("CM009 ROC Analyses") +
+	facet_wrap(~BM, nrow = 4, ncol = 3)  +
+ theme(legend.position="bottom")
+  
+
+df_data <- df_data %>% 
+	arrange(desc(AUC))	 %>%
+	select(-AUC)
+
+	kable(df_data, title  = "CM009 Signature analysis: AUCs")
+
+print(ROCall)
+
+print(ROCfacet)
+  
+```
+
+\newpage
+## ROC for Publication Signature scores
+
+This uses only Signatures previously associated with nivolumab response.
+
+Signature scores are continuous metric and ORR is evaluated by ROC.
+
+ROC analysis requires a binary response metric
+
++ Response20pct=="Not20pct" <- 0
++ Response20pct=="20pctDec" <- 1
+
+
+```{r ROC_pub, length = 8in, width = 7in}
+
+
+
+sdrfScreen$OR_num <- NA
+sdrfScreen$OR_num[which(sdrfScreen$Response20pct=="Not20pct")] <- 0
+sdrfScreen$OR_num[which(sdrfScreen$Response20pct=="20pctDec")] <- 1
+
+comp_sign <-c("Merck18.Score", 
+			  "CD3TCR.Score", 
+			  "IM150_Teff.Score", 
+			  "IM150_Angio.Score",
+			  "Adenosine.Score",
+			  "IM150_MyeloidInfl.Score",
+			  "EMTstroma.Score",
+			  "Javelin.Score")
+
+df_comp <- NULL  
+  df_data <- NULL
+  
+for(i in comp_sign){
+  df_comp <- rbind(df_comp, data.frame("BM"=i, "d"=sdrfScreen$OR_num, m=sdrfScreen[[i]]))  
+
+     roc_marker <- roc(formula=sdrfScreen[["OR_num"]]~sdrfScreen[[i]],percent=TRUE,
+     				  direction = "<", #my addition to keep it AUC
+                    # arguments for ci
+                    ci=TRUE, boot.n=1000, ci.alpha=0.95, stratified=FALSE)
+      
+      label <-  paste0("N= ",nrow(sdrfScreen[which(!is.na(sdrfScreen[[i]])), ]), ", AUC: ", round(roc_marker$auc, 2), 
+                   "% (", round(roc_marker$ci[1], 2),"% -",round(roc_marker$ci[3], 2),"%)" )
+      
+      #adding a separate column to allow sort by AUC
+      AUC <- round(roc_marker$auc, 2)
+  
+      df_data<- rbind(df_data, data.frame("Biomarker"=i, "Stat"=label, "AUC" = AUC))
+  
+  }
+  
+
+#ROC all on one plot  
+ROCall_pub <- df_comp%>%
+	filter(BM != "BMS.Score")%>%
+		ggplot(aes(d = d, m = m, colour=BM)) + 
+	geom_roc() + 
+    style_roc(xlab = "1 - Specificity", ylab= "Sensitivity" ) +
+	coord_equal()+
+	ggtitle("CM009 ROC Analysis")+
+	theme_dj(16)
+  
+
+# ROC facetted by Signature score
+ROCfacet_pub <- ggplot(df_comp, aes(d = d, m = m, color="black")) + 
+	geom_roc() + 
+    style_roc(xlab = "1 - Specificity", ylab= "Sensitivity" ) +
+	coord_equal() +
+	ggtitle("CM009 Publication ROC Analyses") +
+	facet_wrap(~BM, nrow = 4, ncol = 3)  +
+ theme(legend.position="bottom")
+  
+
+df_data <- df_data %>% 
+	arrange(desc(AUC))	 %>%
+	select(-AUC)
+
+	kable(df_data, title  = "CM009 Publication Signature analysis: AUCs")
+
+print(ROCall_pub)
+
+print(ROCfacet_pub)
+  
+```
+\newpage
+
+## ORR for PBRM1 Groups
+
+PBRM1 is a discrete category and ORR is evaluated by fisher exact test.
+
+This analysis is run on the clinical dataset, where there are 48 patients with Objective response and PBRM1 status.
+
+
+```{r pbrm1_ORR_table}
+
+# calculate OR rate by pbrm1
+
+
+
+groupcount3 <- clinicalData_pbrm1 %>% group_by(PBRM1_status) %>% 
+  summarise(N_in_group = n()) 
+
+orr_pcts5 <- clinicalData_pbrm1 %>% group_by(PBRM1_status, Response20pct) %>% 
+  summarise(N = n())
+
+orr_pcts6 <- orr_pcts5%>%
+	left_join(groupcount3,
+					   by = c("PBRM1_status"))%>%
+	mutate(OR_Pct = round(100* N/N_in_group,2))%>%
+	filter(Response20pct=="20pctDec")
+
+orr_pcts6$PBRM1_status <- factor(orr_pcts6$PBRM1_status,
+								   levels = c("WT","Mutant" ))
+
+kable(orr_pcts6, digits = 0,
+      caption = "CM9 48 patients: OR Percentage, By PBRM1")
+```
+
+```{r fisherexact_pbrm1}
+table_pbrm1 <- orr_pcts6%>%
+	select(one_of(c("PBRM1_status","N", "N_in_group")))%>%
+	rename(R = N)%>%
+	mutate(NR = N_in_group - R)%>%
+	select(-N_in_group)
+
+kable(table_pbrm1,
+	  caption = "PBRM1 matrix for Fisher exact test")
+
+fisher_pbrm1 <- table_pbrm1[,2:3]
+
+foo <- fisher.test(fisher_pbrm1,
+				   alternative = "two.sided")
+
+pbrm1pval <- foo[["p.value"]]
+
+```
+
+The P value for the 2x2 matrix testing Objective response distribution in PBRM1 mutant versus WT is 0.011:
+
++ *`r pbrm1pval`*
+
+
+\newpage
+
+## ORR for ccrcc Groups
+
+ccrcc is a discrete category and ORR is evaluated by fisher exact test.
+
+
+```{r ccrcc_ORR_table}
+
+# calculate OR rate by ccrcc
+
+groupcount <- sdrfScreen %>% group_by(ccrccCluster) %>% 
+  summarise(N_in_group = n()) 
+
+orr_pcts <- sdrfScreen %>% group_by(ccrccCluster, Response20pct) %>% 
+  summarise(N = n())
+
+orr_pcts2 <- orr_pcts%>%
+	left_join(groupcount,
+					   by = c("ccrccCluster"))%>%
+	mutate(OR_Pct = round(100* N/N_in_group,2))%>%
+	filter(Response20pct=="20pctDec")
+
+#orr_pcts2$ccrcc <- gsub(".Score", "", orr_pcts2$ccrcc)
+orr_pcts2$ccrccCluster <- factor(orr_pcts2$ccrccCluster ,
+								   levels = c("ccrcc1",
+								   		   "ccrcc2",
+								   		   "ccrcc3",
+								   		   "ccrcc4"))
+
+kable(orr_pcts2, digits = 0,
+      caption = "CM9 56 baseline: OR Percentage, By ccrccCluster")
+```
+
+```{r fisherexact_ccrcc}
+table_ccrcc <- orr_pcts2%>%
+	select(one_of(c("ccrccCluster","N", "N_in_group")))%>%
+	rename(R = N)%>%
+	mutate(NR = N_in_group - R)%>%
+	select(-N_in_group)
+
+kable(table_ccrcc,
+	  caption = "ccrcc matrix for Fisher exact test")
+
+fisher_ccrcc <- table_ccrcc[,2:3]
+
+foo <- fisher.test(fisher_ccrcc)
+
+ccrccpval <- foo[["p.value"]]
+
+```
+
+The P value for the 4x2 matrix testing Objective response distribution in all ccrcc groups is 0.056:
+
++ *`r ccrccpval`*
+
+
+```{r ccrcc4_ORR_table}
+
+#compare ccrcc4 cluster members to rest
+
+sdrfScreen$ccrcc4_binary <- NA
+sdrfScreen$ccrcc4_binary <- "Notccrcc4"
+sdrfScreen$ccrcc4_binary[sdrfScreen$ccrccCluster == "ccrcc4"] <- "ccrcc4"
+
+sdrfScreen$ccrcc4_binary <- factor(sdrfScreen$ccrcc4_binary,
+								   levels = c("Notccrcc4", "ccrcc4"))
+
+# calculate OR rate by initial treatment
+
+groupcount2 <- sdrfScreen %>% group_by(ccrcc4_binary) %>% 
+  summarise(N_in_group = n()) 
+
+orr_pcts3 <- sdrfScreen %>% group_by(ccrcc4_binary, Response20pct) %>% 
+  summarise(N = n())
+
+orr_pcts4 <- orr_pcts3%>%
+	left_join(groupcount2,
+					   by = c("ccrcc4_binary"))%>%
+	mutate(OR_Pct = round(100* N/N_in_group,2))%>%
+	filter(Response20pct=="20pctDec")
+
+#orr_pcts2$ccrcc <- gsub(".Score", "", orr_pcts2$ccrcc)
+orr_pcts4$ccrcc4_binary <- factor(orr_pcts4$ccrcc4_binary ,
+								   levels = c( "Notccrcc4",
+								   		   "ccrcc4"))
+
+kable(orr_pcts4, digits = 0,
+      caption = "CM9 56 baseline: OR Percentage, By ccrcc4_binary")
+
+```
+
+```{r fisherexact_ccrcc4}
+table_ccrcc4 <- orr_pcts4%>%
+	select(one_of(c("ccrcc4_binary","N", "N_in_group")))%>%
+	rename(R = N)%>%
+	mutate(NR = N_in_group - R)%>%
+	select(-N_in_group)
+
+kable(table_ccrcc4,
+	  caption = "ccrcc4 matrix for Fisher exact test")
+
+fisher_ccrcc4 <- table_ccrcc4[,2:3]
+
+foo <- fisher.test(fisher_ccrcc4,
+				   alternative = "two.sided")
+
+ccrcc4pval <- foo[["p.value"]]
+
+```
+
+The P value for the 2x2 matrix testing Objective response distribution in ccrcc4 versus all other groups is 0.013:
+
++ *`r ccrcc4pval`*
+
+
+## ORR graph by ccrcc Cluster
+
+```{r  ccrcc_OR_graph}
+#Add the CR percent in case I figure out how to plot it on top
+CRcount <- sdrfScreen %>% group_by(ccrccCluster, BOR) %>% 
+  summarise(CR_in_group = n()) %>%
+	filter(BOR == "CR")
+
+orr_graph <- orr_pcts2%>%
+	left_join(CRcount)%>%
+		mutate(CR_Pct = round(100* CR_in_group/N_in_group,2))
+
+
+#add the 95% CI for the proportion
+#https://stats.stackexchange.com/questions/207807/95-confidence-interval-for-proportions-in-r
+#confidence interval for a proportion is given by:
+#p_hat +/- z * sqrt(p_hat * (1-p_hat)/n)
+
+# Set CI alpha level (1-alpha/2)*100%
+alpha = 0.05
+# Calculate the critical z-score
+z = qnorm(1-alpha/2)
+# Compute the CI
+#p_hat + c(-1,1)*z*sqrt(p_hat*(1-p_hat)/n)
+
+orr_graph <- orr_graph%>%
+	mutate(LCI = OR_Pct -1*z*sqrt(OR_Pct*(100-OR_Pct)/N_in_group))%>%
+	mutate(UCI = OR_Pct + 1*z*sqrt(OR_Pct*(100-OR_Pct)/N_in_group))
+
+#Confidence interval cannot be <0
+orr_graph$LCI[orr_graph$LCI <0] <-0
+
+
+#Don't know how to plot the CR bars on top of the OR bars.
+#This doesn't work, hangs, crashes
+#likely because of facetting?
+
+# ggplot(data=my_data,aes(x=Block))+
+#   geom_bar(aes(y=Start),stat="identity",position ="identity",alpha=.3,fill='lightblue',color='lightblue4') +
+#   geom_bar(aes(y=End),stat="identity",position ="identity",alpha=.8,fill='pink',color='red')
+
+
+orr_by_ccrcc <- ggplot(orr_graph, aes(x = ccrccCluster, y = OR_Pct, fill = ccrccCluster)) + 
+  geom_bar(stat = "identity") +
+    geom_errorbar( aes(x= ccrccCluster, ymin=LCI, ymax=UCI), width=0.05, colour="black",  size=1)+
+        scale_fill_manual(values = ccrcc_colors) +
+                        labs(title = "CM9: ORR in ccrccCluster",
+                             subtitle = "Baseline, N=56",
+                             x = "Groups from ccrccCluster",
+                        	 y = "ORR, %",
+                            color = "ORR") +
+                        theme(legend.position = "bottom")+
+	geom_text(data = orr_graph, 
+			  aes(x = ccrccCluster, y = -10,
+			  	label = paste("N=",N_in_group)),
+			  inherit.aes = FALSE, hjust = 0.5, vjust = 0,
+			  size = 4) +
+	theme_dj(16)
+
+
+orr_by_ccrcc
+
+```
+
+\newpage
+
+## PBRM1 status for ccrcc Groups
+
+
+```{r ccrcc_pbrm1_table}
+
+sdrfScreen_pbrm1 <- sdrfScreen%>%
+	filter(!is.na(PBRM1))
+
+sdrfScreen_pbrm1$PBRM1_status <- NA
+sdrfScreen_pbrm1$PBRM1_status <- "Mutant"
+sdrfScreen_pbrm1$PBRM1_status[sdrfScreen_pbrm1$PBRM1 == "WT"] <- "WT"
+sdrfScreen_pbrm1$PBRM1_status[sdrfScreen_pbrm1$PBRM1 == "Missense_Mutation"] <- "WT"
+
+sdrfScreen_pbrm1$PBRM1_status <- factor(sdrfScreen_pbrm1$PBRM1_status,
+										  levels = c("WT","Mutant" ))
+
+
+	
+# calculate pbrm1 rate by ccrcc
+groupcount4 <- sdrfScreen_pbrm1 %>% group_by(ccrccCluster) %>% 
+  summarise(N_in_group = n()) 
+
+pbrm_pcts <- sdrfScreen_pbrm1 %>% group_by(ccrccCluster, PBRM1_status) %>% 
+  summarise(N = n())
+
+pbrm_pcts2 <- pbrm_pcts%>%
+	left_join(groupcount4,
+					   by = c("ccrccCluster"))%>%
+	mutate(PBRM1mutant_Pct = round(100* N/N_in_group,2))%>%
+	filter(PBRM1_status=="Mutant")
+
+pbrm_pcts2$ccrccCluster <- factor(pbrm_pcts2$ccrccCluster ,
+								   levels = c("ccrcc1",
+								   		   "ccrcc2",
+								   		   "ccrcc3",
+								   		   "ccrcc4"))
+
+kable(pbrm_pcts2, digits = 0,
+      caption = "CM9 33 baseline: PBRM1 Mutant Percentage, By ccrccCluster")
+```
+
+
+```{r fisherexact_ccrcc_pbrm1}
+table_ccrcc_PBRM <- pbrm_pcts2%>%
+	select(one_of(c("ccrccCluster","N", "N_in_group")))%>%
+	rename(Mutant = N)%>%
+	mutate(WT = N_in_group - Mutant)%>%
+	select(-N_in_group)
+
+kable(table_ccrcc_PBRM,
+	  caption = "ccrcc_PBRM matrix for Fisher exact test")
+
+fisher_ccrcc_PBRM <- table_ccrcc_PBRM[,2:3]
+
+foo <- fisher.test(fisher_ccrcc_PBRM,
+				   alternative = "two.sided")
+
+ccrccPBRMpval <- foo[["p.value"]]
+
+```
+
+The P value for the 2x2 matrix testing PBRM1 distribution in ccrcc groups is 0.91:
+
++ *`r ccrccPBRMpval`*
+
+
+## PBRM1 graph by ccrcc Cluster
+
+```{r  ccrcc_PBRM1_graph}
+
+
+#add the 95% CI for the proportion
+#https://stats.stackexchange.com/questions/207807/95-confidence-interval-for-proportions-in-r
+#confidence interval for a proportion is given by:
+#p_hat +/- z * sqrt(p_hat * (1-p_hat)/n)
+
+# Set CI alpha level (1-alpha/2)*100%
+alpha = 0.05
+# Calculate the critical z-score
+z = qnorm(1-alpha/2)
+# Compute the CI
+#p_hat + c(-1,1)*z*sqrt(p_hat*(1-p_hat)/n)
+
+pbrm_graph <- pbrm_pcts2%>%
+	mutate(LCI = PBRM1mutant_Pct -1*z*sqrt(PBRM1mutant_Pct*(100-PBRM1mutant_Pct)/N_in_group))%>%
+	mutate(UCI = PBRM1mutant_Pct + 1*z*sqrt(PBRM1mutant_Pct*(100-PBRM1mutant_Pct)/N_in_group))
+
+#Confidence interval cannot be <0
+pbrm_graph$LCI[pbrm_graph$LCI <0] <-0
+
+
+pbrm_by_ccrcc <- ggplot(pbrm_graph, aes(x = ccrccCluster, y = PBRM1mutant_Pct, fill = ccrccCluster)) + 
+  geom_bar(stat = "identity") +
+    geom_errorbar( aes(x= ccrccCluster, ymin=LCI, ymax=UCI), width=0.05, colour="black",  size=1)+
+        scale_fill_manual(values = ccrcc_colors) +
+                        labs(title = "CM9: PBRM1 status in ccrccCluster",
+                             subtitle = "Baseline, N=33",
+                             x = "Groups from ccrccCluster",
+                        	 y = "PBRM1 mutant, %",
+                            color = "ORR") +
+                        theme(legend.position = "bottom")+
+	geom_text(data = pbrm_graph, 
+			  aes(x = ccrccCluster, y = -10,
+			  	label = paste("N=",N_in_group)),
+			  inherit.aes = FALSE, hjust = 0.5, vjust = 0,
+			  size = 4) +
+	theme_dj(12)
+
+
+pbrm_by_ccrcc
+
+```
+
+
+
+
+
+## Odds Ratio for PBRM1
+
+I will compare Odds ratio for OR in the PBRM1 mutants versus WT patients.
+
+Analysis requires a binary response metric
+
++ Response20pct=="Not20pct" <- 0
++ Response20pct=="20pctDec" <- 1
+
+glm(OR_num ~ PBRM1_status, data=clinicalData_pbrm1 ,family="binomial")
+
+```{r odds_PBRM1_status}
+
+clinicalData_pbrm1$OR_num <- NA
+clinicalData_pbrm1$OR_num[which(clinicalData_pbrm1$Response20pct=="Not20pct")] <- 0
+clinicalData_pbrm1$OR_num[which(clinicalData_pbrm1$Response20pct=="20pctDec")] <- 1
+
+
+or <- glm(OR_num ~ PBRM1_status, data=clinicalData_pbrm1,family="binomial")
+
+
+#show the output
+broom::tidy(or, exponentiate = FALSE)
+broom::tidy(or, exponentiate = TRUE)
+
+#Collect terms from model
+pbrm_OR <- exp(summary(or)$coefficients["PBRM1_statusMutant",1])
+
+pbrm_logOR <- (summary(or)$coefficients["PBRM1_statusMutant",1])
+
+pbrm_SE.logOR <- summary(or)$coefficients["PBRM1_statusMutant",2]
+
+pbrm_lo.logOR<- (summary(or)$coefficients["PBRM1_statusMutant",1] + qnorm(0.025) * summary(or)$coefficients["PBRM1_statusMutant",2])
+
+pbrm_up.logOR<- (summary(or)$coefficients["PBRM1_statusMutant",1] + qnorm(0.975) * summary(or)$coefficients["PBRM1_statusMutant",2])
+
+pbrm_Pvalue <- summary(or)$coefficients["PBRM1_statusMutant",4]
+
+```
+
+
+
+## Odds Ratio for ccrcc4 Cluster
+
+I will compare Odds ratio for OR in the ccrcc4 cluster members versus rest of patients.
+
+glm(OR_num ~ ccrcc4_binary, data=sdrfScreen,family="binomial")
+
+```{r odds_ccrcc4}
+
+#compare ccrcc4 cluster members to rest
+
+sdrfScreen$ccrcc4_binary <- NA
+sdrfScreen$ccrcc4_binary <- "Notccrcc4"
+sdrfScreen$ccrcc4_binary[sdrfScreen$ccrccCluster == "ccrcc4"] <- "ccrcc4"
+
+sdrfScreen$ccrcc4_binary <- factor(sdrfScreen$ccrcc4_binary,
+								   levels = c("Notccrcc4", "ccrcc4"))
+
+
+or <- glm(OR_num ~ ccrcc4_binary, data=sdrfScreen,family="binomial")
+
+
+#show the output
+broom::tidy(or, exponentiate = FALSE)
+broom::tidy(or, exponentiate = TRUE)
+
+#Collect terms from model
+ccrcc4_OR <- exp(summary(or)$coefficients["ccrcc4_binaryccrcc4",1])
+
+ccrcc4_logOR <- (summary(or)$coefficients["ccrcc4_binaryccrcc4",1])
+
+ccrcc4_SE.logOR <- summary(or)$coefficients["ccrcc4_binaryccrcc4",2]
+
+ccrcc4_lo.logOR<- (summary(or)$coefficients["ccrcc4_binaryccrcc4",1] + qnorm(0.025) * summary(or)$coefficients["ccrcc4_binaryccrcc4",2])
+
+ccrcc4_up.logOR<- (summary(or)$coefficients["ccrcc4_binaryccrcc4",1] + qnorm(0.975) * summary(or)$coefficients["ccrcc4_binaryccrcc4",2])
+
+ccrcc4_Pvalue <- summary(or)$coefficients["ccrcc4_binaryccrcc4",4]
+
+```
+
+
+
+## Odds ratio for Signature scores
+
+This calculates the Odds Ratio for each Signature score (continuous) against Overall Response (as a binary metric). 
+
+glm(OR_num ~ score)
+
+
+```{r contrasts_signatures}
+
+#Uses function contrastTable
+
+comp_sign <-c("Merck18.Score", 
+			  "CD3TCR.Score", 
+			  "IM150_Teff.Score", 
+			  "IM150_Angio.Score",
+			  "Adenosine.Score",
+			  "IM150_MyeloidInfl.Score",
+			  "EMTstroma.Score",
+			  "Javelin.Score")
+
+
+df_forestPl <- NULL
+
+
+for(i in comp_sign){
+df <- sdrfScreen
+df$score <- df[[i]]
+or <- glm(OR_num ~ score, data=df,family="binomial")
+
+quant <- quantile(df$score, c( .25,  .75))
+deltaSc <- ( quant[2] -quant[1])
+
+
+L <- cbind( Intercept=0, score = deltaSc )
+ctrtbl <- as.data.frame(contrastTable( or, L, level = 0.95 ))
+ctrtbl$Signature <- i
+df_forestPl <- rbind(df_forestPl, ctrtbl)
+}
+
+
+```
+
+## Odds ratio Table
+
+```{r forest_add_ccrcc}
+#Add ccrcc annotation
+df_forestPl[nrow(df_forestPl)+1,] <- c(pbrm_OR,
+									   pbrm_logOR,
+									   pbrm_SE.logOR,
+									   pbrm_lo.logOR,
+									   pbrm_up.logOR,
+									   "0.95",
+									   NA,
+									   pbrm_Pvalue,
+									   "PBRM1_status")
+
+
+#Add ccrcc annotation
+df_forestPl[nrow(df_forestPl)+1,] <- c(ccrcc4_OR,
+									   ccrcc4_logOR,
+									   ccrcc4_SE.logOR,
+									   ccrcc4_lo.logOR,
+									   ccrcc4_up.logOR,
+									   "0.95",
+									   NA,
+									   ccrcc4_Pvalue,
+									   "ccrcc4.cluster")
+
+df_forestPl <- df_forestPl %>% mutate_at(1:8,as.numeric)
+
+```
+
+
+```{r forest_label}
+df_forestPl$label <- paste0("OR: ", format(round(exp(df_forestPl$logOR), 2), nsmall = 2), 
+                                   " [", format(round(exp(df_forestPl$lo.logOR), 2), nsmall = 2), 
+                                   ", ", format(round(exp(df_forestPl$up.logOR), 2), nsmall = 2), "]")
+
+
+
+df_forestPl$label <- paste0(df_forestPl$Signature, "\n", df_forestPl$label)
+
+```
+
+## Forest Plot of all Odds Ratios
+
+```{r forest_plot}
+#Sort the X axis by P value using 'reorder'
+
+forestplot <- ggplot(data=df_forestPl,aes(x=(reorder(label, -Pvalue)), y=logOR*log2(exp(1)),ymin=lo.logOR*log2(exp(1)), ymax=up.logOR*log2(exp(1))), legend=label) +
+  geom_pointrange(show.legend=T) + 
+  geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
+  xlab(NULL)  + 
+	ylab("log2(Odds Ratio)")  + 
+	theme(text = element_text(size=10)) +
+ggtitle("CM9: Odds Ratio for ccrcc4, and Signature Scores")+
+		geom_text(data = df_forestPl, 
+			  aes(x = label, y = -2.5,
+			  	label = paste("P=",round(Pvalue,3))),
+			  inherit.aes = FALSE, hjust = 0, vjust = -0.5,
+			  size = 4) +
+  coord_flip() +  # flip coordinates (puts labels on y axis)
+	theme_dj(12)
+	
+
+print(forestplot)
+
+```
+
+## Results table: AUC and Odds ratios for signatures
+
+```{r AUC_Odds_table}
+
+#This drops the ccrcc because it does not have a result in ROC analyses
+results <- left_join(df_data, df_forestPl, 
+					 by = c("Biomarker" = "Signature"))
+
+results <- results %>%
+	rename(AUC = Stat) %>%
+	select(-label) 
+
+results$AUC <-	gsub("N= 56, AUC: ", "", results$AUC)
+
+kable(results,
+	  title = "CM009 Signature analysis: AUCs and ORs" )
+
+```
+
+
+## Plot Angio versus Myeloid
+
+```{r scatterplot_1}
+
+plotcountscatter <- nrow(sdrfScreen)
+
+scatterplot1 <- sdrfScreen %>% 
+			ggplot(aes(x = IM150_MyeloidInfl.Score, y = IM150_Angio.Score)) +
+			geom_point(aes(x = IM150_MyeloidInfl.Score, y = IM150_Angio.Score, 
+				   colour = Response20pct, shape = clinical.history),
+			   size = 3) +
+	    geom_smooth(method=lm, colour="black") +
+  scale_colour_manual(name = 'Response',
+  					values = setNames(c('black','orange'),
+  									  c("Not20pct", "20pctDec")))+
+	 #scale_shape_manual(values=c(4,24)) + 
+  geom_hline(yintercept = median(sdrfScreen$IM150_Angio.Score), linetype="dashed") +
+  geom_text(data=data.frame(x=1.8,y=0.1), 
+  		  aes(x, y), label= "Median Angio.Score", size = 3) +
+geom_vline(xintercept = median(sdrfScreen$IM150_MyeloidInfl.Score), linetype="dashed") +
+  geom_text(data=data.frame(x=0.4,y=1.5), 
+  		  aes(x, y), label= "Median Myeloid.Score", size = 3) +
+  coord_fixed(ratio = 1) +
+  labs(title = "CM009: Angiogenesis v. Myeloid Inflammation",
+  	 subtitle = paste("Baseline Biopsies, N=",plotcountscatter),
+       x = "IM150_MyeloidInflammation",
+      y = "IM150_Angiogenesis") +
+ # theme_dj(10) +
+  theme(legend.position = "bottom") +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), shape = guide_legend(nrow=2,byrow=TRUE))
+
+print(scatterplot1)
+```
+
+
+## Plot Teffector versus Myeloid
+
+```{r scatterplot_2}
+
+plotcountscatter <- nrow(sdrfScreen)
+
+scatterplot2 <- sdrfScreen %>% 
+			ggplot(aes(x = IM150_MyeloidInfl.Score, y = IM150_Teff.Score)) +
+			geom_point(aes(x = IM150_MyeloidInfl.Score, y = IM150_Teff.Score, 
+				   colour = Response20pct, shape = clinical.history),
+			   size = 3) +
+	    geom_smooth(method=lm, colour="black") +
+  scale_colour_manual(name = 'Response',
+  					values = setNames(c('black','orange'),
+  									  c("Not20pct", "20pctDec")))+
+	 #scale_shape_manual(values=c(4,24)) + 
+  geom_hline(yintercept = median(sdrfScreen$IM150_Teff.Score), linetype="dashed") +
+  geom_text(data=data.frame(x=1.8,y=-0.1), 
+  		  aes(x, y), label= "Median Teffector.Score", size = 3) +
+geom_vline(xintercept = median(sdrfScreen$IM150_MyeloidInfl.Score), linetype="dashed") +
+  geom_text(data=data.frame(x=0.4,y=2), 
+  		  aes(x, y), label= "Median Myeloid.Score", size = 3) +
+  coord_fixed(ratio = 1) +
+  labs(title = "CM009: Teffector v. Myeloid Inflammation",
+  	 subtitle = paste("Baseline Biopsies, N=",plotcountscatter),
+       x = "IM150_MyeloidInflammation",
+      y = "IM150_Teffector") +
+ # theme_dj(10) +
+  theme(legend.position = "bottom") +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), shape = guide_legend(nrow=2,byrow=TRUE))
+
+print(scatterplot2)
+```
+
+## Plot Angiogenesis v. ccrcc clusters
+
+```{r boxplot_Angio_ccrcc}
+
+plotcountbox <- nrow(sdrfScreen)
+
+boxplot_Angio_ccrcc  <- sdrfScreen %>% 
+			ggplot(aes(x = ccrccCluster, y = IM150_Angio.Score)) +
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = Response20pct),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=1, jitter.width = 0.2)) +
+	scale_shape_manual(values=c(3,1)) +
+	scale_colour_manual(name = 'Response',
+						values = setNames(c('black','orange'),
+										  c("Not20pct", "20pctDec")))+
+	scale_y_continuous(breaks=seq(-1, 1, 1)) +
+	labs(title = "CA209-009 Baseline Biopsy: IM150_Angio v. ccrcc Cluster",
+		 subtitle = paste("Subjects with Screen Affymetrix, N=",plotcountbox),
+		 x = "ccrcc Cluster Category",
+		 y = "IM150_Angio") +
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE)) +
+	stat_compare_means()+
+	theme_dj(12)
+
+print(boxplot_Angio_ccrcc)
+
+
+
+```
+
+
+## Plot BMS93 v. ccrcc Cluster 
+
+This plot shows the BMS93 are highest expressed in cluster 4.
+
+```{r boxplot_BMS93_ccrcccluster}
+
+
+plotcount <- nrow(sdrfScreen)
+
+boxplot_bms_ccrcc <- sdrfScreen %>% 
+			ggplot(aes(x = ccrccCluster, y = BMS.Score)) +
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = Response20pct),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=1, jitter.width = 0.2)) +
+	scale_shape_manual(values=c(3,1)) +
+	scale_colour_manual(name = 'Response',
+						values = setNames(c('black','orange'),
+										  c("Not20pct", "20pctDec")))+
+	scale_y_continuous(breaks=seq(-1, 1, 1)) +
+	labs(title = "CA209-009 Baseline Biopsy: BMS93 v. ccrccCluster",
+		 subtitle = paste("Subjects with Screen Affymetrix, N=",plotcount),
+		 x = "ccrccCluster Category",
+		 y = "BMS93 composite") +
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE)) +
+	stat_compare_means()
+
+print(boxplot_bms_ccrcc)
+```
+
+## Plot BMS93 v. ccrcc Top Score 
+
+This plot shows the BMS93 are highest expressed where the top score is ccrcc4.
+
+```{r boxplot_BMS93_ccrccTopScore}
+
+
+plotcount <- nrow(sdrfScreen)
+
+boxplot <- sdrfScreen %>% 
+			ggplot(aes(x = ccrccTopScore, y = BMS.Score)) +
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = Response20pct),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=1, jitter.width = 0.2)) +
+	scale_shape_manual(values=c(3,1)) +
+	scale_colour_manual(name = 'Response',
+						values = setNames(c('black','orange'),
+										  c("Not20pct", "20pctDec")))+
+	scale_y_continuous(breaks=seq(-1, 1, 1)) +
+	labs(title = "CA209-009 Baseline Biopsy: BMS93 v. ccrccTopScore",
+		 subtitle = paste("Subjects with Screen Affymetrix, N=",plotcount),
+		 x = "ccrccTopScore Category",
+		 y = "BMS93 composite") +
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE)) +
+	stat_compare_means()
+
+print(boxplot)
+```
+
+
+
+## Heatmap: Waterfall, All Signatures clustered
+
+```{r waterfall_all_clustered_annotation}
+
+#Count subjects in plot
+plotcount <- nrow(sdrfScreen)
+
+#sort data by MPCT
+sdrfScreen <- sdrfScreen%>%
+	arrange(desc(MPCTrank))
+
+
+# This will use the signatures as the dataframe
+mat <- sdrfScreen%>%
+	select("BMS.Score",
+		"CD3TCR.Score",
+		   "IM150_Angio.Score",
+		   "IM150_MyeloidInfl.Score",
+		   "IM150_Teff.Score",
+		   "Merck18.Score",
+		   "Fuhrman.Score",
+		   "Adenosine.Score",
+		   "ccrcc2.Score",
+		   "ccrcc4.Score",
+	"EMTstroma.Score",
+	"Javelin.Score")
+
+# transpose the matrix
+mat <- t(mat)
+
+
+# Want to plot MPCT Response20pct PDL1cat BOR3 SUBJID
+# Later plot TMB, VHL, PBRM1 SETD2?
+
+
+
+ha_top = HeatmapAnnotation(barplot1 = anno_barplot(sdrfScreen$MPCT, 
+												   axis = TRUE, 
+												   baseline = 0,
+						   						gp = gpar(fill = 
+						   								  	ifelse(sdrfScreen$Response20pct == "20pctDec",
+						   								  		   "goldenrod2", "black"))),
+						   blank = sdrfScreen$biopsy.timepoint,
+						   barplot2 = anno_barplot(sdrfScreen$MPCTBiopsy, 
+												   axis = TRUE, 
+												   baseline = 0,
+						   						gp = gpar(fill = 
+						   								  	ifelse(sdrfScreen$MPCTBiopsy <= -20,
+						   								  		   "goldenrod2", "black"))),
+						   col = list(blank = c("Screen" = "white")),
+						   annotation_height = unit(c(2,0.2,2), "cm"),
+						 show_legend = FALSE)
+
+
+
+
+ha_bottom = HeatmapAnnotation(response = sdrfScreen$Response20pct,
+							  pbrm1 = sdrfScreen$PBRM1,
+							   blank = sdrfScreen$biopsy.timepoint,
+						   ccrccTop = sdrfScreen$ccrccTopScore,
+						   ccrccCluster = sdrfScreen$ccrccCluster,
+							  col = list(
+							  response = c("Not20pct" ="black", "20pctDec"= "goldenrod2"),	
+							  pbrm1 = c("Missense_Mutation" = "black",
+								  		  "Nonsense_Mutation" = "goldenrod2",
+                                            "Frame_Shift_Del" = "goldenrod2" ,
+								  		  "Frame_Shift_Ins" = "goldenrod2",
+								  		  "Splice_Site" = "goldenrod2",
+								  		  "WT" = "black"),
+							  blank = c("Screen" = "white"),
+							  		   ccrccTop =c("ccrcc1.Score"= "black",
+							  					  "ccrcc2.Score"= "red",
+							  					  "ccrcc3.Score"= "grey",
+							  					  "ccrcc4.Score"= "goldenrod"),
+							  			ccrccCluster = c("ccrcc1"= "black",
+							  					  "ccrcc2"= "red",
+							  					  "ccrcc3"= "grey",
+							  					  "ccrcc4"= "goldenrod")
+								  		  ),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5,.2,.5,.5), "cm"),
+						 show_legend = c(response = TRUE,
+						 				pbrm1 = TRUE,
+						 			blank = FALSE,
+						 			ccrccTop = FALSE,
+						 			ccrccCluster = TRUE))
+
+#draw(ha_top,1:56)
+#draw(ha_bottom,1:56)
+
+
+heatmap_object = Heatmap(mat,
+						 col = colorRamp2(c(-1, 0, 1), 
+						 				 c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 clustering_distance_rows = "euclidean",
+    					clustering_method_rows = "ward.D2",
+						    row_dend_side = "right",
+    				row_dend_width = unit(5, "mm"),
+    				show_row_dend = TRUE,
+						 km = 3,
+						 show_row_names = TRUE,
+						 row_names_side = "left",
+						 row_names_gp = gpar(fontsize = 10),
+						 cluster_columns = FALSE,
+						 column_title = "CM9: 56 Baseline, All Signature Correlation",
+						 show_column_names = FALSE,
+#						 height = unit(2, "cm"),
+						 width = unit(16, "cm"),
+						show_heatmap_legend = FALSE,
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(4, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(4, "cm"))
+
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file2 <- paste(results_dir, "/GEP_Heatmap_Signatures_Clustered_ALL_Annotation_",
+					   plotcount,"Subjects_Screen_Waterfall.pdf",
+					   sep="")
+pdf(file=heatmap_file2, width=24,height=6)
+
+
+draw(heatmap_object, padding = unit(c(10, 50, 20, 20), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+
+decorate_annotation("barplot1", 
+					{grid.text("Tumor Burden\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("barplot2", 
+					{grid.text("Baseline Lesion\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("pbrm1", 
+					{grid.text("PBRM1 Status", unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("ccrccTop", 
+					{grid.text("ccrcc TopScore",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("ccrccCluster", 
+					{grid.text("ccrcc Cluster", unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+
+dev.off()
+
+```
+
+## Heatmap: Waterfall, Publication Signatures clustered
+
+```{r waterfall_all_clustered_annotation}
+
+#Count subjects in plot
+plotcount <- nrow(sdrfScreen)
+
+#sort data by MPCT
+sdrfScreen <- sdrfScreen%>%
+	arrange(desc(MPCTrank))
+
+
+# This will use the signatures as the dataframe
+mat <- sdrfScreen%>%
+	select("CD3TCR.Score",
+		   "IM150_Angio.Score",
+		   "IM150_MyeloidInfl.Score",
+		   "IM150_Teff.Score",
+		   "Merck18.Score",
+		   "Fuhrman.Score",
+		   "Adenosine.Score",
+	"EMTstroma.Score",
+	"Javelin.Score")
+
+# transpose the matrix
+mat <- t(mat)
+
+
+# Want to plot MPCT Response20pct PDL1cat BOR3 SUBJID
+# Later plot TMB, VHL, PBRM1 SETD2?
+
+
+
+ha_top = HeatmapAnnotation(barplot1 = anno_barplot(sdrfScreen$MPCT, 
+												   axis = TRUE, 
+												   baseline = 0,
+						   						gp = gpar(fill = 
+						   								  	ifelse(sdrfScreen$Response20pct == "20pctDec",
+						   								  		   "goldenrod2", "black"))),
+						   blank = sdrfScreen$biopsy.timepoint,
+						   barplot2 = anno_barplot(sdrfScreen$MPCTBiopsy, 
+												   axis = TRUE, 
+												   baseline = 0,
+						   						gp = gpar(fill = 
+						   								  	ifelse(sdrfScreen$MPCTBiopsy <= -20,
+						   								  		   "goldenrod2", "black"))),
+						   col = list(blank = c("Screen" = "white")),
+						   annotation_height = unit(c(2,0.2,2), "cm"),
+						 show_legend = FALSE)
+
+
+
+
+ha_bottom = HeatmapAnnotation(response = sdrfScreen$Response20pct,
+							  pbrm1 = sdrfScreen$PBRM1,
+							   blank = sdrfScreen$biopsy.timepoint,
+						   ccrccCluster = sdrfScreen$ccrccCluster,
+							  col = list(
+							  response = c("Not20pct" ="black", "20pctDec"= "goldenrod2"),	
+							  pbrm1 = c("Missense_Mutation" = "black",
+								  		  "Nonsense_Mutation" = "goldenrod2",
+                                            "Frame_Shift_Del" = "goldenrod2" ,
+								  		  "Frame_Shift_Ins" = "goldenrod2",
+								  		  "Splice_Site" = "goldenrod2",
+								  		  "WT" = "black"),
+							  blank = c("Screen" = "white"),
+							  ccrccCluster = c("ccrcc1"= "black",
+							  					  "ccrcc2"= "red",
+							  					  "ccrcc3"= "grey",
+							  					  "ccrcc4"= "goldenrod")
+								  		  ),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5,.2,.5), "cm"),
+						 show_legend = c(response = TRUE,
+						 				pbrm1 = TRUE,
+						 			blank = FALSE,
+						 			ccrccCluster = TRUE))
+
+#draw(ha_top,1:56)
+#draw(ha_bottom,1:56)
+
+
+heatmap_object = Heatmap(mat,
+						 col = colorRamp2(c(-1, 0, 1), 
+						 				 c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 clustering_distance_rows = "euclidean",
+    					clustering_method_rows = "ward.D2",
+						    row_dend_side = "right",
+    				row_dend_width = unit(5, "mm"),
+    				show_row_dend = TRUE,
+						 km = 2,
+						 show_row_names = TRUE,
+						 row_names_side = "left",
+						 row_names_gp = gpar(fontsize = 10),
+						 cluster_columns = FALSE,
+						 column_title = "CM9: 56 Baseline, Publication Signature Correlation",
+						 show_column_names = FALSE,
+#						 height = unit(2, "cm"),
+						 width = unit(16, "cm"),
+						show_heatmap_legend = FALSE,
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(4, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(4, "cm"))
+
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file_pub <- paste(results_dir, "/GEP_Heatmap_Signatures_Clustered_Pub_Annotation_",
+					   plotcount,"Subjects_Screen_Waterfall.pdf",
+					   sep="")
+pdf(file=heatmap_file_pub, width=24,height=6)
+
+
+draw(heatmap_object, padding = unit(c(10, 50, 20, 20), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+
+decorate_annotation("barplot1", 
+					{grid.text("Tumor Burden\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("barplot2", 
+					{grid.text("Baseline Lesion\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("pbrm1", 
+					{grid.text("PBRM1 Status", unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+decorate_annotation("ccrccCluster", 
+					{grid.text("ccrcc Cluster", unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+
+dev.off()
+
+```
+
+
+## Outputs
+
+```{r outputs}
+
+#ORR chart for ccrcc groups
+
+ORR_ccrcc_file <- paste0(results_dir, "/GEP_barchart_ORR_ccrccCluster.png")
+
+ggsave(orr_by_ccrcc, file = ORR_ccrcc_file, width=6, height=6,
+	   units = "in", dpi = 96)
+
+#PBRM1 chart for ccrcc groups
+
+pbrm1_ccrcc_file <- paste0(results_dir, "/GEP_barchart_PBRM1_ccrccCluster.png")
+
+ggsave(pbrm_by_ccrcc, file = pbrm1_ccrcc_file, width=6, height=6,
+	   units = "in", dpi = 96)
+
+
+#Odds ratio for signatures and ccrcc4 group and pbrm1
+forest_file  <- paste0(results_dir, "/GEP_Table_BiopsyScreen_OddsRatio_Results.txt")
+
+write_tsv(df_forestPl, forest_file)
+
+
+#AUC and OddsRatio results for signatures
+results_file  <- paste0(results_dir, "/GEP_Table_BiopsyScreen_GEPSignatures_AUC_Odds.txt")
+
+write_tsv(results, results_file)
+
+
+#multiplex ROC curves
+ROCall_file <- paste0(results_dir, "/GEP_Signature_Baseline_ROC_All_Pub.png")
+
+
+ggsave(ROCall_pub, file = ROCall_file, width=8, height=6,
+	   units = "in", dpi = 96)
+
+#facetted ROC curves
+ROCfacet_file <- paste0(results_dir, "/GEP_Signature_Baseline_ROC_Facet_Pub.png")
+
+ggsave(ROCfacet_pub, file = ROCfacet_file, width=6, height=8,
+	   units = "in", dpi = 96)
+
+#Forest plot
+forestplot_file <- paste0(results_dir, "/GEP_Signature_Baseline_Forest_Pub.png")
+
+ggsave(forestplot, file = forestplot_file, width=4.5, height=5,
+	   units = "in", dpi = 96)
+
+
+#Scatterplots
+
+ang_myeloid_file <- paste0(results_dir, "/GEP_Scatterplot_Signatures_Baseline_AngMyeloid.png")
+
+ggsave(scatterplot1, file = ang_myeloid_file, width=6, height=8,
+	   units = "in", dpi = 96)
+
+teff_myeloid_file <- paste0(results_dir, "/GEP_Scatterplot_Signatures_Baseline_TeffMyeloid.png")
+
+ggsave(scatterplot2, file = teff_myeloid_file, width=6, height=8,
+	   units = "in", dpi = 96)
+
+#Boxplots
+
+ang_ccrcc_file <- paste0(results_dir, "/GEP_Boxplot_Signatures_Baseline_Angio_ccrcc.png")
+
+ggsave(boxplot_Angio_ccrcc, file = ang_ccrcc_file, width=6, height=8,
+	   units = "in", dpi = 96)
+
+
+bms_ccrcc_file <- paste0(results_dir, "/GEP_Boxplot_Signatures_Baseline_BMS_ccrcc.png")
+
+ggsave(boxplot_bms_ccrcc, file = bms_ccrcc_file, width=6, height=8,
+	   units = "in", dpi = 96)
+
+
+```
+
+Save the ORR chart for ccrcc groups to:
+
++ *`r ORR_ccrcc_file`*
+
+Save the PBRM1 mutant% chart for ccrcc groups to:
+
++ *`r pbrm1_ccrcc_file`*
+
+Save the AUC and ROC results for scores to:
+
++ *`r results_file`*
+
+Save the single superimposed ROC to:
+
++ *`r ROCall_file`*
+
+Save the individual facetted ROCs to:
+
++ *`r ROCfacet_file`*
+
+Save the Forest Plot of ccrcc4, pbrm1, signatures to:
+
++ *`r forestplot_file`*
+
+Scatterplots of signatures were saved to:
+
++ *`r ang_myeloid_file`*
++ *`r teff_myeloid_file`*
+
+Boxplots of signatures versus groups were saved to:
+
++ *`r ang_ccrcc_file`*
++ *`r bms_ccrcc_file`*
+
+
+Heatmaps of the signature annotation were saved to variants of:
+
++ *`r heatmap_file_pub`*
++ *`r heatmap_file2`*
+

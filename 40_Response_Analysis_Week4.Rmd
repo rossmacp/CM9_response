@@ -1,0 +1,576 @@
+---
+title: "Week 4 Gene Expression associated with Response"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+
+##_ Set knitr root directory to correspond to project working directory 
+##_  setting based on structure with code in <project dir>/code
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+## Procedure
+
+1. Load rma data, nlme results, sample annotation, probeset annotation
+1. Filter nlme results to 779 genes associated with response at week 4
+1. Filter nlme results to relevant columns
+1. Calculate effect size
+1. Subset the Sample annotation to Week 4 samples
+1. Subset the RMA data to Week 4 samples
+1. Calculate TcellReceptor score and annotate samples.
+1. Make Annotated Heatmap of Expression, by waterfall order
+1. Make Annotated Heatmap of Expression, Clustering
+1. Make boxplot of Top DEGs
+1. Make facetted boxplot
+1. Save table of 779 genes, and boxplot of Top DEG
+
+
+## Paths and Packages
+
+```{r paths_packages}
+
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+## Load packages ##
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(ComplexHeatmap)
+library(circlize)
+library(ggpubr)
+
+```
+
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+
+
+```
+
+```{r palettes}
+
+
+# shape map for prior therapy
+shape_prior <- c("PriorTherapy_Yes" = 16, 
+              "PriorTherapy_No" = 18)
+
+
+# color map for response
+color_response <- c("Not20pct" = "black", 
+              "20pctDec" = "goldenrod2")
+
+```
+
+
+## Data sources
+
+```{r loaddata}
+
+# nlme Results
+TumorRESPfile <- paste(data_dir, "CA209009-tumorAffy-table02-v01.csv", sep = "/")
+BiopsyRESP <- read.csv(TumorRESPfile, stringsAsFactors=FALSE, header=TRUE, na.strings = "NA")
+
+# SDRF (Sample and Data Relationship Format) file from Array Express
+sdrf_file <- paste(data_dir, "E-MTAB-3218 sdrf_response.txt", sep = "/")
+sdrf <- read_tsv(sdrf_file)
+
+# Affymetrix probeset to Gene annotation
+probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
+probeset <- read_tsv(probeset_file)
+
+
+# Object containing Probesets for Geneset of T cell receptor transcripts
+tcellprobesets <- probeset %>%
+	filter(!is.na(probeset$Geneset_Tcell)) %>%
+	pull(Probeset)
+
+
+# Expression values
+rma_file <- paste(data_dir, "CA209009-tumorAffy-HGU219_HS_ENTREZG.rma", sep = "/")
+rma <- read_tsv(rma_file)
+
+# Make Colnames match "Assay.Name" in sdrf annotation
+colnames(rma) <- sub("ENTREZG-", "", colnames(rma))
+rma <- rename(rma, Probeset = X1)
+
+```
+
+
+## Week4 Response Association Results Table
+
+We are going to select the 779 genes using:
+
++ p.response < P05 (Umbrella test for difference in means at any timepoint)
++ p.response28 < P01 (Contrast for difference in means at Week 4 timepoint)
++ absolute difference in means  >= 0.32165 (1.25-fold effect size)
+
+```{r week4_results}
+# Filter Parameters
+P01 <- 0.01
+P05 <- 0.05
+Fold13 <- 0.3785
+Fold12 <- 0.263
+Fold125 <- 0.32165
+
+
+# To subset the 779 probesets and their Week4 Response effect
+TumWeek4RESPeffect <- filter(BiopsyRESP, 
+							  p.response < P05,
+							  p.response28 < P01,
+							  abs(response28) >= Fold125) %>%
+	select(Gene, p.response28, q.response28,
+		   DecLT20pc_Day28_GrpAvg, DecGE20pc_Day28_GrpAvg)
+	
+# Merge in updated gene annotation
+TumWeek4RESPeffect <- right_join(probeset[,1:5], TumWeek4RESPeffect, by = c("Probeset" = "Gene"))
+
+
+# calculate Effect size using modeled group means
+TumWeek4RESPeffect <- mutate(TumWeek4RESPeffect, 
+									 Effect.Size = round(DecGE20pc_Day28_GrpAvg-DecLT20pc_Day28_GrpAvg,2))
+
+# calculate Foldchange using modeled group means
+TumWeek4RESPeffect <- mutate(TumWeek4RESPeffect, 
+									 Fold.Change = round(2^(DecGE20pc_Day28_GrpAvg-DecLT20pc_Day28_GrpAvg),2))
+
+# Round modeled group mean RMA values
+TumWeek4RESPeffect <- TumWeek4RESPeffect %>%
+	mutate(Responder_Day28_GrpAvg = round(DecGE20pc_Day28_GrpAvg,2))%>%
+	mutate(NonResponder_Day28_GrpAvg = round(DecLT20pc_Day28_GrpAvg,2))%>%
+	select(-DecGE20pc_Day28_GrpAvg, -DecLT20pc_Day28_GrpAvg)
+
+
+```
+
+## Week4 Subject sample Annotation
+
+```{r week4_subjects}
+
+sdrfWeek4 <- sdrf %>%
+	filter(biopsy.timepoint == "Week4", Response20pct != "NE")
+```
+
+## Tcell score from Week4 Gene expression RMA Values
+
+```{r week4_rma}
+
+# Filter rma data to 55 Week4 Array columns plus Probeset column
+rmaweek4 <- select(rma, one_of("Probeset",sdrfWeek4$Assay.Name))
+
+# Subset rmascreen data to just the 6 T cell receptor probesets 
+rmaTcell <- rmaweek4[rmaweek4$Probeset %in% tcellprobesets,]
+```
+
+RMA values for the six T-cell probesets are Z-scored across the 55 Week4 samples. For each Sample, the median of the six Z-scores is the Tcell.Score.  The Tcell.Score is added to the sdrf sample annotation.
+
+```{r tcell_score}
+
+# Transpose rma data to columns, Z score, transpose back to 6 rows, get median of 6, transpose to a sample annotation
+tcellscore<- as.data.frame(t(scale(t(rmaTcell[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "Tcell.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfWeek4 <- right_join(sdrfWeek4, tcellscore,
+								  by = "Assay.Name")
+```
+
+
+## Week4 Response gene expression heatmap, Waterfall order
+
+
+```{r rma_779}
+# Filter rma data to 779 probesets and 55 Week4 Array columns plus Probeset column
+rma779 <- rmaweek4[rmaweek4$Probeset %in% TumWeek4RESPeffect$Probeset, ]
+```
+
+
+
+```{r heatmap_waterfall}
+
+#make a row annotation matrix in the rma datset order
+row779 <- left_join(rma779[,1], probeset[,1:5], by = "Probeset")
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma779[,-1])))
+rownames(scaled_mat) = rma779$Probeset
+
+# Top heatmap annotation is lesion reduction, Biopsy site
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(sdrfWeek4$MPCTBiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(sdrfWeek4$MPCTBiopsy > -19, 
+						   												"black", "goldenrod2"))),
+						   biopsy = sdrfWeek4$BiopsySite,
+						   col = list(biopsy = c("LymphNode"  = "goldenrod2", "UNKNOWN" = "white",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black")),
+							  na_col = "white",
+						   annotation_height = unit(c(3,.5), "cm"))
+
+# draw(ha_top,1:56)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = sdrfWeek4$Response20pct,
+							  colname = anno_text(sdrfWeek4$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  col = list(response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5,.5), "cm"))
+
+# draw(ha_bottom,1:56)
+
+# Provide column order as descending MPCT (ie waterfall plot)
+ordering = order(-sdrfWeek4$MPCTrank)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue4", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 km = 2,
+						 show_row_names = FALSE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CA209-009: 55 Week4 for 779 Response",
+						 show_column_names = FALSE,
+						 width = unit(9, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(4, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(1, "cm")) +
+	rowAnnotation(IRIS = row779$IRIS_Most_Specific,
+				  col = list(IRIS = 
+				  		   	c(`T Cell` = "darkolivegreen1",
+				  		   	  `NK Cell` = "darkolivegreen1",
+				  		   	  `B Cell` = "darkolivegreen1",
+				  		   	  Lymphoid = "darkolivegreen1",
+				  		   	  `Dendritic Cell` = "blue",
+				  		   	  Neutrophil = "blue",
+				  		   	  Monocyte = "blue",
+				  		   	  Myeloid = "blue",
+				  		   	  Multiple = "goldenrod2")),
+				  na_col = "white",
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Week4_ResponseEffect.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+
+decorate_annotation("barplot2", 
+					{grid.text("Week4 Biopsy\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+
+dev.off()
+
+
+```
+
+## Week4 Response gene expression heatmap, Clustering samples
+
+```{r heatmap_cluster}
+
+#make a row annotation matrix in the rma datset order
+row779 <- left_join(rma779[,1], probeset[,1:5], by = "Probeset")
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma779[,-1])))
+rownames(scaled_mat) = rma779$Probeset
+
+# Top heatmap annotation is lesion reduction, Biopsy site and TCR score
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(sdrfWeek4$MPCTBiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(sdrfWeek4$MPCTBiopsy > -19, 
+						   												"black", "goldenrod2"))),
+						   biopsy = sdrfWeek4$BiopsySite,
+						   Tcell = sdrfWeek4$Tcell.Score,
+						   col = list(Tcell = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+						   		   biopsy = c("LymphNode"  = "goldenrod2", "UNKNOWN" = "white",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black")),
+							  na_col = "white",
+						   annotation_height = unit(c(3,.5,.5), "cm"))
+
+# draw(ha_top,1:56)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = sdrfWeek4$Response20pct,
+							  colname = anno_text(sdrfWeek4$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  col = list(response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5), "cm"))
+
+# draw(ha_bottom,1:56)
+
+# Provide column order as descending MPCT (ie waterfall plot)
+ordering = order(-sdrfWeek4$MPCTrank)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue4", "white", "firebrick")), 
+						  cluster_rows = TRUE,
+						 show_row_names = FALSE,
+						  cluster_columns = TRUE,
+						 #column_order = ordering,
+						 column_title = "CA209-009: 55 Week4 for 779 Response",
+						 show_column_names = FALSE,
+						 width = unit(9, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(4, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(1, "cm")) +
+	rowAnnotation(IRIS = row779$IRIS_Most_Specific,
+				  col = list(IRIS = 
+				  		   	c(`T Cell` = "darkolivegreen1",
+				  		   	  `NK Cell` = "darkolivegreen1",
+				  		   	  `B Cell` = "darkolivegreen1",
+				  		   	  Lymphoid = "darkolivegreen1",
+				  		   	  `Dendritic Cell` = "blue",
+				  		   	  Neutrophil = "blue",
+				  		   	  Monocyte = "blue",
+				  		   	  Myeloid = "blue",
+				  		   	  Multiple = "goldenrod2")),
+				  na_col = "white",
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Week4_ResponseEffect_Cluster.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+
+decorate_annotation("barplot2", 
+					{grid.text("Week4 Biopsy\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+decorate_annotation("Tcell", 
+					{grid.text("TCRsig Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+dev.off()
+
+
+```
+
+## Boxplot of a selected gene
+
+```{r boxplot}
+
+# Define the desired probeset and grab the gene Symbol
+probesetwanted <- "3430_at"
+genewanted <- as.character(probeset[probeset$Probeset == probesetwanted, 4])
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+onegene <- rmaweek4 %>% 
+	filter(Probeset == probesetwanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrfWeek4, 
+					 c("Assay.Name", "Response20pct", 
+					   "individual", "clinical.history")))
+
+# Set levels of Response factor to determine plotting order
+onegene$Response20pct <-factor(onegene$Response20pct, 
+							   levels = c("Not20pct","20pctDec"))
+
+# Count number of datapoints plotted
+plotcount <- nrow(onegene)
+
+# Plot baseline expression values for gene
+boxplot <- ggplot(onegene,
+				  aes(x = Response20pct, y = RMA)) +
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = clinical.history, shape = clinical.history),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=1, jitter.width = 0.2)) +
+	scale_shape_manual(values=c(3,1)) +
+	scale_colour_manual(name = 'PriorVEGFi',
+						values = setNames(c('black','orange'),
+										  c("PriorTherapy_Yes", "PriorTherapy_No")))+
+	labs(title = paste("CA209-009 Week4 Biopsy: ",probesetwanted, "=", genewanted),
+		 subtitle = paste("Subjects with Week4 Affymetrix, N=",plotcount),
+		 x = "Response Category",
+		 y = "Expression signal, RMA") +
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE))
+
+print(boxplot)
+```
+
+## Boxplot facetted for  several gene
+
+```{r boxplot_multigene}
+
+# Define the desired probeset and grab the gene Symbol
+probesetswanted <- c("80380_at","1493_at","201633_at")
+genewanted <- as.character(probeset[probeset$Probeset == probesetswanted, 4])
+
+# Make a P value annotation dataframe
+#get the P values from the limma
+Pvalue_selectedGenes <- TumWeek4RESPeffect%>%
+	filter(Probeset %in% probesetswanted)%>%
+	select(Symbol,p.response28)%>% 
+	mutate_at("p.response28", round, 4)%>%
+	mutate(Assay.Name = "5500994180307022414440_G01")
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+multigene <- rmaweek4 %>% 
+	filter(Probeset %in% probesetswanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrfWeek4, 
+					 c("Assay.Name", "Response20pct", 
+					   "individual", "clinical.history")))
+
+#get Symbol
+multigene <- multigene %>%
+	left_join(select(probeset, c("Probeset", "Symbol")))
+
+#add pvalue to multigenel
+multigene <- multigene %>%
+	left_join(select(Pvalue_selectedGenes, c("p.response28", "Assay.Name", "Symbol")),
+			  by = c("Symbol" = "Symbol", "Assay.Name" = "Assay.Name"))
+
+multigene$p.response28[is.na(multigene$p.response28)] <- ""
+
+# Set levels of Response factor to determine plotting order
+multigene$Response20pct <-factor(multigene$Response20pct, 
+							   levels = c("Not20pct","20pctDec"))
+
+# Count number of datapoints plotted
+plotcount <- length(unique(multigene$Assay.Name))
+
+# Plot baseline expression values for gene
+boxplot2 <- ggplot(multigene,
+				  aes(x = Response20pct, y = RMA)) +
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = Response20pct, shape = clinical.history),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=.3, jitter.width = 0.2)) +
+	scale_colour_manual(name = 'Response',
+						values = color_response) +
+	scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+	labs(title = "CA209-009 Week4 Biopsy: ",
+		 subtitle = paste("Subjects with Week4 Affymetrix, N=",plotcount),
+		 x = "Response Category",
+		 y = "Expression signal, RMA") +
+		scale_x_discrete(labels=c("Not20pct" = "NonResponder\nN = 44", 
+							  "20pctDec" = "Responder\nN = 11"))+
+	scale_y_continuous(breaks=seq(2,9,1))+
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE))+
+ 	geom_text(aes(x=0.5, y= 8,
+ 				  label= paste("P=",p.response28)),
+ 			    		  size = 6,
+   		  hjust = "inward")+
+	facet_wrap(~Symbol, ncol = 1,scales = "free_y") +
+	theme_dj(16)
+
+print(boxplot2)
+
+
+```
+
+
+
++ responders *`r sum(sdrfWeek4$Response20pct == "20pctDec")`*
++ Nonresponders *`r sum(sdrfWeek4$Response20pct == "Not20pct")`*
+
+
+
+
+## Output Results
+
+```{r output}
+
+# Table of 779 Week4 genes
+# Count the hits and make an output filename
+countWeek4RESP <- nrow(TumWeek4RESPeffect)
+TumWeek4RESP_file <- paste0(results_dir,"/",
+					"GEP_Table_BiopsyWeek4_ResponseEffect_",countWeek4RESP,"prbs",".txt")
+
+# Write tsv file of 779prbs, annotation and statistics 
+write_tsv(TumWeek4RESPeffect, TumWeek4RESP_file)
+
+# Save box plot of selected gene
+box_file <- paste(results_dir, "/GEP_Boxplot_Response_Week4_",
+					   paste0(probesetwanted,"_",genewanted),
+					   ".png",
+					   sep="")
+
+ggsave(boxplot, file = box_file, width=6, height=8,
+	   units = "in", dpi = 96)
+
+# Save facetted box plot selected genes
+box2_file <- paste(results_dir, "/GEP_Boxplot_Response_Week4_Multigene.png",
+					   sep="")
+
+ggsave(boxplot2, file = box2_file, width=6, height=10,
+	   units = "in", dpi = 96)
+
+```
+

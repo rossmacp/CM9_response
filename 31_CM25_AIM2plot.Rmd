@@ -1,0 +1,370 @@
+---
+title: "AIM2_plot_CM25"
+output: github_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+
+##_ Set knitr root directory to correspond to project working directory 
+##_  setting based on structure with code in <project dir>/code
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+## Procedure
+
+Creation of the AIM2 data table is not reproducible outside BMS. The chunks are not evaluated.
+
+1. Load DGE object
+1. Filter to metastatic biopsy samples from Nivolumab arm
+1. Extract data for AIM2 gene 
+1. Add some sample annotation
+1. Save AIM2 data table
+
+These steps are reproducible from this repo
+
+1. Load AIM2 data table
+1. Make boxplot from table
+
+
+## Paths and Packages
+
+These paths and packages are required:
+
+```{r paths_packages_reproducible}
+
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(ggpubr)
+```
+
+
+These paths and packages were used to generate the data table at BMS:
+
+```{r paths_packages_nonreproducible, eval=FALSE}
+
+##location of DGEobject
+stash_dir <- "/stash/data/clin/ca/ca209/025"
+
+
+require(devtools)
+source('http://bran.pri.bms.com/resources/configureRepo.R')
+# install_version("DGEobj", version = "0.9.35", repos="http://BRAN.pri.bms.com")
+install.packages(c("DGEobj", "DGE.Tools2", "JRTutil"))
+
+library(DGEobj)
+library(DGE.Tools2)
+library(JRTutil)
+library(zFPKM)
+
+library(conflicted)  #forces double colon references for function that appear in multiple packages.
+conflict_prefer("filter", "dplyr")
+
+
+```
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+
+
+```
+
+```{r palettes}
+# color map for response
+color_response3 <- c("PD" = "black",
+					"SD" = "grey",
+              "CRPR" = "goldenrod2")
+
+# color map for response
+color_response2 <- c("NonResponder" = "black", 
+              "Responder" = "goldenrod2")
+
+
+```
+
+
+## Original Data Sources
+
+```{r loadDGE, eval=FALSE}
+
+smps5mRDSfinal_file <- paste(stash_dir,
+						"ngs/derived", 
+						"CM25_dgeObj_smps5m_final.Rds",
+						sep = "/")
+
+dgeObj <- read_rds(smps5mRDSfinal_file)
+
+```
+
+The original CM25 expression RNAseq data was loaded from
+
++ `r smps5mRDSfinal_file`
+
+
+
+## Subset samples
+
+RNAseq samples were filtered to those from nivolumab-treated subjects with a biopsy from a metastatic site, and response evaulable by RECIST. 
+
+Samples also had to pass QC_EstimatedLibrarySize > 5000000 (5 million reads).
+
+17 samples met these criteria.
+
+
+```{r NIVO_METS, eval=FALSE}
+
+# get the design matrix , where rows are  in same order as sample columns
+design <- getItem(dgeObj, "design")
+
+
+#Make vector of 17 nivolumab samples from metastases
+samplesOfInterest <- design %>%
+	filter(TUMLOC == "METASTASIS",
+		   ACTARM == "NIVOLUMAB",
+		   CBOR3  %in% c("CRPR","PD","SD")) %>%
+	pull(smps)
+
+
+
+# Make logical vector of which samples to keep
+keep_vector <- design$smps %in% samplesOfInterest
+
+#Subset the DGE object by the logical vector
+dgeObj2 <- dgeObj[,
+							 keep_vector]
+
+```
+
+
+
+
+## Get AIM2 data table
+
+The RNAseq expression dataset was filtered to just the AIM2 gene.
+
+An annotated table was saved.
+
+
+```{r AIM2_Data, eval=FALSE}
+
+geneOfInterest <- "AIM2"
+
+  #get log2cpm data
+  log2cpm <- convertCounts(dgeObj2$counts, unit="cpm", log=TRUE, normalize="tmm")
+  
+  #filter for the gene of interest
+  idx <- dgeObj2$geneData$Symbol == geneOfInterest
+  
+  #want it to stay as a table although there is only 1 row
+  log2cpm <- as.data.frame(log2cpm[idx,,drop=FALSE])
+  
+  #swap gene symbols for Ensembl IDs
+  rownames(log2cpm) <- dgeObj2[idx,]$geneData$Symbol
+  
+  #put in tidy format
+  aim2data <- tidyIntensity(log2cpm,
+                           rowidColname="GeneID",
+                           keyColname="Sample",
+                           valueColname="Log2CPM",
+                           group=dgeObj2$design_fa04$ArmResponse)
+  
+  #Make BOR a seperate  column
+  aim2data <- separate(aim2data,
+  					 group,
+  					 into = c("Treatment", "BOR"),
+  					 sep = "_")
+  
+ 
+#want to add the information about FFPE sample age and metatstatic site
+ 
+design2 <- rownames_to_column(design) 
+
+aim2data <- left_join(aim2data,
+					  select(design2,
+					  	   one_of(c("rowname","FFPEage2groups", "TUMLOC"))),
+					  	    by = c("Sample" = "rowname")) 
+					  	 
+
+aim2data$FFPEage2groups <- gsub("&lt;= ", "less than ", aim2data$FFPEage2groups)
+aim2data$FFPEage2groups <- gsub("&gt; ", "greater than ", aim2data$FFPEage2groups) 
+  
+# Table of AIM2 data
+# Count the samples and make an output filename
+countSamples <- nrow(aim2data)
+aim2data_file <- paste0(data_dir,"/",
+						"CM25_",countSamples,"Pts_AIM2",".txt")
+
+# Write tsv file of 17pts annotation and data
+write_tsv(aim2data, aim2data_file)
+ 
+  
+```
+
+
+  
+## Load and Format the data
+
+```{r load_data}
+#Read the table of AIM2 data from CM25
+aim2data_file <- "./data/import/CM25_17Pts_AIM2.txt"
+
+aim2data <- read_tsv(aim2data_file)
+
+
+#set levels of BOR  
+aim2data$BOR <- factor(aim2data$BOR,
+  						levels = c( "PD",
+  									 "SD",
+  									 "CRPR"))
+
+#creat objective Response
+aim2data$OR <- NA
+aim2data$OR <- "NonResponder"
+aim2data$OR[aim2data$BOR == "CRPR"] <- "Responder"
+
+aim2data$OR <- factor(aim2data$OR,
+					  levels = c("NonResponder","Responder" ))
+
+# Count number of datapoints plotted
+plotcount <- nrow(aim2data)
+
+```
+
+The annotated AIM2 data subset from CM25 was loaded from:
+
++`r aim2data_file`
+
+
+## Plot the AIM2 data by BOR3
+
+```{r plot_BOR3}
+
+# Specify desired comparison
+my_comparisons <- list( c("PD", "SD"), c("SD", "CRPR"), c("PD", "CRPR") )
+
+
+# Plot baseline expression values for gene
+boxplot_BOR <- ggplot(aim2data,
+				  aes(x = BOR, y = Log2CPM)) +
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = BOR, shape = FFPEage2groups),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=0.5, jitter.width = 0.2)) +
+	scale_shape_manual(values=c(15,17)) +
+	scale_colour_manual(name = 'Response',
+						values = color_response3) +
+	labs(title = "CM25 FFPE samples: AIM2",
+		 subtitle = paste("Subjects with Biopsy from Metastatic site, N=",plotcount),
+		 x = "Response Category",
+		 y = "Expression signal, log2CPM") +
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE)) +
+ stat_compare_means(comparisons = my_comparisons,
+ 				   method = "t.test",
+ 				   size = 5) +
+		theme_dj(14)
+
+
+print(boxplot_BOR)
+```
+
+## Plot the AIM2 data by OR
+
+```{r plot_OR}
+
+# Specify desired comparison
+my_comparisons <- list( c("NonResponder", "Responder"))
+
+#The p value from a wilcox test
+#method = "wilcox",
+#method.args = list(alternative = "greater")
+#to make it match the CM9 plot
+Pvalue_selectedGene <- 0.078
+
+
+# Plot baseline expression values for gene
+boxplot_OR <- ggplot(aim2data,
+				  aes(x = OR, y = Log2CPM)) +
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = OR, shape = FFPEage2groups),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=0.5, jitter.width = 0.2)) +
+	scale_shape_manual(values=c(15,17)) +
+	scale_colour_manual(name = 'Response',
+						values = color_response2) +
+	labs(title = "CM25 FFPE samples: AIM2",
+		 subtitle = paste("Patients with Biopsy from Metastatic site, N=",plotcount),
+		 x = "Response Category",
+		 y = "Expression signal, log2CPM") +
+				scale_x_discrete(labels=c("NonResponder" = "NonResponder\nN = 13", 
+							  "Responder" = "Responder\nN = 4"))+
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE))+
+		  geom_text(data=data.frame(x=0.0,y=4), 
+  		  aes(x, y), 
+  		  label= paste("AIM2\nP=",round(Pvalue_selectedGene,4)),
+  		  size = 6,
+  		  hjust = "inward")+
+	theme_dj(14)
+
+print(boxplot_OR)
+
+```
+
+
+
+
+## Save output graphs
+
+```{r outputs}
+
+# Save box plot of selected gene
+box_file <- paste(results_dir, 
+				  "GEP_Boxplot_Response_BOR_CM25_AIM2.png",
+					   sep="/")
+
+ggsave(boxplot_BOR, file = box_file, width=6, height=6,
+	   units = "in", dpi = 96)
+
+# Save box plot of selected gene
+box_file2 <- paste(results_dir, 
+				  "GEP_Boxplot_Response_OR_CM25_AIM2.png",
+					   sep="/")
+
+ggsave(boxplot_OR, file = box_file2, width=6, height=6,
+	   units = "in", dpi = 96)
+```
+
+The resulting boxplots were saved in:
+
++ `r box_file`
++ `r box_file2`
+  
+  
+  
+
+

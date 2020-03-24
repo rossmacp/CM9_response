@@ -1,0 +1,290 @@
+---
+title: "IL18 Change over time vs Response"
+output: github_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+
+##_ Set knitr root directory to correspond to project working directory 
+##_  setting based on structure with code in <project dir>/code
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+## Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(RColorBrewer)
+library(ggpubr)
+library(ggsignif)
+
+```
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+
+
+```
+
+```{r palettes}
+
+
+# shape map for prior therapy
+shape_prior <- c("Pretreated" = 16, 
+              "Naive" = 18)
+
+# color map for response
+color_response <- c("Not20pct" = "black", 
+              "20pctDec" = "goldenrod2",
+					"NE" = "grey")
+
+```
+
+# Data sources
+
+```{r data}
+
+# Patient Annotation
+# NB move from stash when finalized (eg PBRM1 added)
+clinicalData_file <- paste(data_dir, "CM9_Patient_Annotation.txt", sep = "/" )
+clinicalData <- read_tsv(clinicalData_file)
+
+# rbm data
+# this is derived from T:\Myriad RBM\PRODUCTION\ARCHIVE\CA209-009\Processed Files\Measurment_Data_Unpivoted.txt
+# Should probably import the whole table and filter for Analyte in this script
+
+rbm_file <- paste(data_dir, 
+					 "CA209-009 Myriad RBM Measurment_Data_Unpivoted IL18.txt", 
+					 sep = "/")
+rbm <- read_tsv(rbm_file)
+```
+
+
+# Format data
+
+```{r format}
+
+keepcols <- c()
+
+# Add clinical Annotation from 91 treated
+rbm <- left_join(rbm, select(clinicalData, 
+					 c("USUBJID","SUBJID", "VEGFstatus","Response20pct")), 
+			  by = c("Subject ID" = "USUBJID"))
+
+#remove subjects not in 91 treated
+rbm <- filter(rbm, !is.na(SUBJID))
+
+# Set levels of Response factor to determine plotting order
+rbm$Response20pct <-factor(rbm$Response20pct, 
+							   levels = c("Not20pct","20pctDec","NE"))
+
+# Set levels of biopsy.timepoint factor to determine plotting order
+rbm$`BIOSTORE:STUDY_TIMEPOINT` <-factor(rbm$`BIOSTORE:STUDY_TIMEPOINT`, 
+								  levels = c("C1D1_0H","C1D1 3HR","C1D1 7HR",
+								  		   "C1D2 24HR","C2D1_0H","C2D8 168HR",
+								  		   "C4D1_0H","SCREENING","FOLLUP1"))
+
+rbm$VEGFstatus <- factor(rbm$VEGFstatus,
+						 levels = c("Pretreated" ,"Naive"))
+
+
+```
+
+## Check all the timpoints
+
+```{r plot_data_check}
+
+
+#choose timepoints
+# here I choose time that matches the biopsy, after checking all times.
+timepoints <- c("C1D1_0H",
+				"C1D2 24HR",
+				"C2D1_0H",
+				"C2D8 168HR",
+				"C4D1_0H")
+
+response <- c("Not20pct","20pctDec")
+
+#subset data to remove unwanted timepoints, subjects
+plotdata <- rbm[rbm$`BIOSTORE:STUDY_TIMEPOINT` %in% timepoints,]
+plotdata <- plotdata[plotdata$Response20pct %in% response,]
+
+#https://stackoverflow.com/questions/3472980/how-to-change-facet-labels
+# Change levels of Response20pct for facet labelling
+levels(plotdata$Response20pct) <- c("NonResponder", "Responder", "NE")
+
+plotdata <- plotdata%>%
+	rename(Timepoint = `BIOSTORE:STUDY_TIMEPOINT`,
+		   Result = `Original Result`)
+
+
+# #https://github.com/kassambara/ggpubr/issues/65
+# # #try to get p values
+# anno_df <- compare_means(Result ~ Timepoint,
+# 						 group.by = "Response20pct",
+# 						 data = plotdata,
+# 						 method = "t.test",
+# 						 paired = TRUE,
+# 						 p.adjust.method = "holm") %>%
+# 	mutate(y_pos = 1400, p.adj = format.pval(p.adj, digits = 2))
+
+# Count Subjects
+plotcount <- length(unique(plotdata$`Subject ID`))
+
+# Plot "timepoints" values for IL18
+boxplot <- ggplot(plotdata,
+				  aes(x = Timepoint, y = Result)) +
+	geom_boxplot(aes(Timepoint),
+				 outlier.shape = NA,
+				 alpha=0.2) +
+	geom_point(aes(color = Response20pct, shape= VEGFstatus),
+			   size = 1,
+			   position = position_jitter(w = 0.2, h = 0)) +
+	scale_colour_manual(name = 'Response',
+						values = c("black", "goldenrod2")) +
+	 scale_shape_manual(name = 'Prior Therapy',
+	 						values=c(16,18)) +
+	geom_line(aes(group = `Subject ID`), 
+			  colour = "black", alpha=0.3) +
+	scale_y_continuous(trans='log2',
+					   limits=c(32, 2048)) +
+	facet_grid(~Response20pct)+
+	labs(title = "CA209-009 RBM: IL18",
+		 subtitle = paste("Subjects with response status, N=",plotcount),
+		 x = "Response Category",
+		 y = "IL18, pg/mL") +
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=6),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(shape = guide_legend(nrow=2,byrow=TRUE),
+		   fill = guide_legend(nrow=2,byrow=TRUE))+
+			# scale_x_discrete(labels=c("C1D1_0H" = "Screen", 
+			# 				  "C2D1_0H" = "Day 28"))+
+	theme_dj(16)+
+	theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+print(boxplot)
+
+# Save box plot 
+box_file <- paste(results_dir, "/","IL18_vs_",
+				  paste(timepoints, collapse = "_"),"_ByResponse.png",
+				  sep="")
+
+ggsave(boxplot, file = box_file, width=7, height=7,
+	   units = "in", dpi = 96)
+
+
+
+```
+
+
+
+## Print one comparison
+
+```{r plot_data_publication}
+
+mycomparisons <- list(c("C1D1_0H","C2D1_0H"))
+
+#choose timepoints
+# here I choose C2D1, after checking all times.
+timepoints <- c("C1D1_0H","C2D1_0H")
+response <- c("Not20pct","20pctDec")
+
+#subset data to remove unwanted timepoints, subjects
+plotdata <- rbm[rbm$`BIOSTORE:STUDY_TIMEPOINT` %in% timepoints,]
+plotdata <- plotdata[plotdata$Response20pct %in% response,]
+
+#https://stackoverflow.com/questions/3472980/how-to-change-facet-labels
+# Change levels of Response20pct for facet labelling
+levels(plotdata$Response20pct) <- c("NonResponder", "Responder", "NE")
+
+plotdata <- plotdata%>%
+	rename(Timepoint = `BIOSTORE:STUDY_TIMEPOINT`,
+		   Result = `Original Result`)
+
+
+# #https://github.com/kassambara/ggpubr/issues/65
+# # #try to get p values
+# anno_df <- compare_means(Result ~ Timepoint,
+# 						 group.by = "Response20pct",
+# 						 data = plotdata,
+# 						 method = "t.test",
+# 						 paired = TRUE,
+# 						 p.adjust.method = "holm") %>%
+# 	mutate(y_pos = 1400, p.adj = format.pval(p.adj, digits = 2))
+
+# Count Subjects
+plotcount <- length(unique(plotdata$`Subject ID`))
+
+# Plot "timepoints" values for IL18
+boxplot <- ggplot(plotdata,
+				  aes(x = Timepoint, y = Result)) +
+	geom_boxplot(aes(Timepoint),
+				 outlier.shape = NA,
+				 alpha=0.2) +
+	geom_point(aes(color = Response20pct, shape= VEGFstatus),
+			   size = 2,
+			   position = position_jitter(w = 0.2, h = 0)) +
+	scale_colour_manual(name = 'Response',
+						values = c("black", "goldenrod2")) +
+	 scale_shape_manual(name = 'Prior Therapy',
+	 						values=c(16,18)) +
+	geom_line(aes(group = `Subject ID`), 
+			  colour = "black", alpha=0.3) +
+	scale_y_continuous(trans='log2',
+					   limits=c(32, 2048)) +
+	facet_grid(~Response20pct)+
+	labs(title = "CA209-009 RBM: IL18",
+		 subtitle = paste("Subjects with response status, N=",plotcount),
+		 x = "Response Category",
+		 y = "IL18, pg/mL") +
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=6),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(shape = guide_legend(nrow=2,byrow=TRUE),
+		   fill = guide_legend(nrow=2,byrow=TRUE))+
+			scale_x_discrete(labels=c("C1D1_0H" = "Screen", 
+							  "C2D1_0H" = "Day21"))+
+	stat_compare_means(method="t.test", size = 6,
+					   aes(label = paste0("P = ", ..p.format..)),
+					   comparisons = mycomparisons,
+					   vjust = "inward")+
+	theme_dj(16)
+
+
+print(boxplot)
+
+# Save box plot 
+box_file <- paste(results_dir, "/","IL18_vs_",
+				  paste(timepoints, collapse = "_"),"_ByResponse.png",
+				  sep="")
+
+ggsave(boxplot, file = box_file, width=7, height=4,
+	   units = "in", dpi = 96)
+
+
+
+```
+

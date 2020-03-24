@@ -1,0 +1,776 @@
+---
+title: "CA209009 baseline Geneset Scores and ccrcc group calculation"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+```
+
+## Procedure
+
+1. Create each of the geneset probeset lists
+1. Get RMA expression values for baseline samples for each of the lists
+1. Calculate score for each list
+1. Merge score into sample annotation
+1. Calculate ccrcc grouping using top ccrcc list score for patient
+1. Calculate ccrcc grouping using clusters
+1. Merge ccrcc grouping into sample annotation
+1. Save annotation for analytical work
+
+## Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(ComplexHeatmap)
+library(circlize)
+library(limma)
+library(knitr)
+library(ggpubr)
+library(broom)
+```
+
+
+```{r palettes}
+
+ccrcc_colors = c("ccrcc1"= "black",
+							  					  "ccrcc2"= "red",
+							  					  "ccrcc3"= "grey",
+							  					  "ccrcc4"= "goldenrod")
+
+
+```
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+
+
+## Functions by Peter Szabo
+
+contrastTable <- function(object, ...)
+  UseMethod("contrastTable")
+
+contrastTable.coxph <- function(object, linmat, level = 0.95, df = 1, rnames =
+                                  dimnames(linmat)[[1]]) {
+  #
+  # DESCRIPTION:
+  #    Computes point estimates and confidence intervals, and Wald
+  #    test statistics and p-values, for specified contrasts (or
+  #    more generally, linear combinations) of coefficients from a
+  #    fitted Cox model (coxph object). Typically these contrasts
+  #    will represent some sort of hazard ratio (HR).
+  #
+  #    This is a method for the generic function contrastTable for
+  #    objects inheriting from class "coxph".
+  #
+  # ARGUMENTS:
+  # object  a coxph object
+  # linmat  numeric matrix with one row per contrast and one column
+  #    corresponding to each coefficient in object.
+  # level  desired confidence level. Default is 0.95, giving 95%
+  #    confidence intervals for the contrasts.
+  # df  a vector of positive integers, giving the degrees of
+  #    freedom for the chi-squared distribution used for computing
+  #    the Wald test p-values. The default is 1. Must have length
+  #    one, in which case that value is used for all tests, or
+  #    length nrow(linmat). If you're unsure what value to use for
+  #    a particular contrast, consult a statistician. If you ARE a
+  #    statistician, consult a different statistician. Has no
+  #    influence on HR point and interval estimates.
+  # rnames  character vector giving names of the requested
+  #    contrasts, used as rownames in the return value. Default is
+  #    row names of linmat.
+  #
+  # VALUE:
+  #    a numeric matrix with one row per contrast, and columns
+  #    "HR", "logHR", "SE.logHR", "lo.logHR", "up.logHR", "level",
+  #    "WaldStat", and "Pvalue".
+  #
+  ###
+  # Argument checking
+  ###
+  if (length(rnames) == 0) rnames <- character(0)
+  if (!is.matrix(linmat))
+    stop("linmat must be a matrix.")
+  ncon <- nrow(linmat)
+  if (ncon == 0) return(NULL)
+  b <- coef(object)
+  if (ncol(linmat) != length(b))
+    stop(paste("linmat must have", length(b), "columns."))
+  if (length(df) != 1 && length(df) != ncon)
+    stop(paste("df must have length 1 or ", ncon, ".", sep = ""))
+  if (length(level) != 1)
+    stop("level must have length 1.")
+  ###
+  # Compute useful stuff
+  ###   
+  loghr <- linmat %*% b
+  hrest <- exp(loghr)
+  se.loghr <- sqrt(diag(linmat %*% object$var %*% t(linmat)))
+  qqq <- qnorm( 1 - ( (1 - level)/2 ) )
+  lo <- loghr - qqq * se.loghr
+  hi <- loghr + qqq * se.loghr
+  waldval <- loghr/se.loghr
+  pwald <- 1 - pchisq(waldval^2, df)
+  ###
+  # Wrap it up pretty and go home
+  ###
+  cnames <- c( "HR", "logHR", "SE.logHR", "lo.logHR", "up.logHR", "level",
+               "WaldStat", "Pvalue" )
+  level <- rep(level, ncon)
+  out <- c(hrest, loghr, se.loghr, lo, hi, level, waldval, pwald)
+  out <- array(out, c(ncon, round(length(out)/ncon)), list(rnames, cnames))
+  out
+}
+
+
+
+
+
+contrastTable.glm <- function(object, linmat, level = 0.95, df = 1, rnames =
+                                dimnames(linmat)[[1]]) {
+  #
+  # DESCRIPTION:
+  #    Computes point estimates and confidence intervals, and Wald
+  #    test statistics and p-values, for specified contrasts (or
+  #    more generally, linear combinations) of coefficients from a
+  #    fitted Cox model (coxph object). Typically these contrasts
+  #    will represent some sort of hazard ratio (HR).
+  #
+  #    This is a method for the generic function contrastTable for
+  #    objects inheriting from class "coxph".
+  #
+  # ARGUMENTS:
+  # object  a coxph object
+  # linmat  numeric matrix with one row per contrast and one column
+  #    corresponding to each coefficient in object.
+  # level  desired confidence level. Default is 0.95, giving 95%
+  #    confidence intervals for the contrasts.
+  # df  a vector of positive integers, giving the degrees of
+  #    freedom for the chi-squared distribution used for computing
+  #    the Wald test p-values. The default is 1. Must have length
+  #    one, in which case that value is used for all tests, or
+  #    length nrow(linmat). If you're unsure what value to use for
+  #    a particular contrast, consult a statistician. If you ARE a
+  #    statistician, consult a different statistician. Has no
+  #    influence on HR point and interval estimates.
+  # rnames  character vector giving names of the requested
+  #    contrasts, used as rownames in the return value. Default is
+  #    row names of linmat.
+  #
+  # VALUE:
+  #    a numeric matrix with one row per contrast, and columns
+  #    "HR", "logHR", "SE.logHR", "lo.logHR", "up.logHR", "level",
+  #    "WaldStat", and "Pvalue".
+  #
+  ###
+  # Argument checking
+  ###
+  if (length(rnames) == 0) rnames <- character(0)
+  if (!is.matrix(linmat))
+    stop("linmat must be a matrix.")
+  ncon <- nrow(linmat)
+  if (ncon == 0) return(NULL)
+  b <- coef(object)
+  if (ncol(linmat) != length(b))
+    stop(paste("linmat must have", length(b), "columns."))
+  if (length(df) != 1 && length(df) != ncon)
+    stop(paste("df must have length 1 or ", ncon, ".", sep = ""))
+  if (length(level) != 1)
+    stop("level must have length 1.")
+  ###
+  # Compute useful stuff
+  ###   
+  logor <- linmat %*% b
+  hrest <- exp(logor)
+  se.logor <- sqrt(diag(linmat %*% summary(object)$cov.scaled %*% t(linmat)))
+  qqq <- qnorm( 1 - ( (1 - level)/2 ) )
+  lo <- logor - qqq * se.logor
+  hi <- logor + qqq * se.logor
+  waldval <- logor/se.logor
+  pwald <- 1 - pchisq(waldval^2, df)
+  ###
+  # Wrap it up pretty and go home
+  ###
+  cnames <- c( "OR", "logOR", "SE.logOR", "lo.logOR", "up.logOR", "level",
+               "WaldStat", "Pvalue" )
+  level <- rep(level, ncon)
+  out <- c(hrest, logor, se.logor, lo, hi, level, waldval, pwald)
+  out <- array(out, c(ncon, round(length(out)/ncon)), list(rnames, cnames))
+  out
+}
+
+
+```
+
+## Data Sources
+
+```{r loaddata}
+
+# Expression values
+rma_file <- paste(data_dir, "CA209009-tumorAffy-HGU219_HS_ENTREZG.rma", sep = "/")
+rma <- read_tsv(rma_file)
+
+# Make rma Colnames match "Assay.Name" in sdrf annotation
+colnames(rma) <- sub("ENTREZG-", "", colnames(rma))
+rma <- rename(rma, Probeset = X1)
+
+# SDRF (Sample and Data Relationship Format) file from Array Express
+# NB move from stash when finalized.
+sdrf_file <- paste(data_dir, "E-MTAB-3218 sdrf_response.txt", sep = "/")
+sdrf <- read_tsv(sdrf_file)
+sdrf$Response20pct <- as.factor(sdrf$Response20pct)
+sdrf$individual <- as.factor(sdrf$individual)
+sdrf$clinical.history <- as.factor(sdrf$clinical.history)
+
+# Affymetrix probeset to Gene annotation
+#JFC jimhester actually deliberately made it wipe the data from a column if the first 1000 rows are NA
+#because it now uses 1000 rows to guess type = logical, when it isn't.
+probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
+probeset <- read_tsv(probeset_file,guess_max = 18571)
+```
+
+```{r geneset_vectors}
+# Object containing Probesets for Geneset of T cell receptor transcripts
+tcellprobesets <- probeset %>%
+	filter(!is.na(probeset$Geneset_Tcell)) %>%
+	pull(Probeset)
+
+# # Object containing 88 Probesets for Geneset of ELVIDGE_HIF1A_TARGETS_DN
+# hif1a_probesets <- probeset %>%
+# 	filter(!is.na(probeset$Geneset_ELVIDGE_HIF1A_TARGETS_DN)) %>%
+# 	pull(Probeset)
+
+# McDermott IMmotion 150 genesets
+#McDermott et al, Nature Medicine volume 24, pages 749–757 (2018)
+
+Geneset_Angio_probesets <- probeset %>%
+	filter(Geneset_IMmotion150 == "McDermott_Angio") %>%
+	pull(Probeset) 
+
+
+Geneset_Myeloid_probesets<- probeset %>%
+	filter(Geneset_IMmotion150 == "McDermott_Myeloid") %>%
+	pull(Probeset) 
+
+Geneset_Teff_probesets<- probeset %>%
+	filter(Geneset_IMmotion150 == "McDermott_Teff") %>%
+	pull(Probeset) 
+
+## Merck 18
+Merckup<- probeset %>%
+	filter(!is.na(probeset$Geneset_Merck18) & probeset$Geneset_Merck18=="Merck_Up") %>%
+	pull(Probeset) 
+
+Merckdown<- probeset %>%
+	filter(!is.na(probeset$Geneset_Merck18) & probeset$Geneset_Merck18=="Merck_Down") %>%
+	pull(Probeset) 
+
+#Fuhrman
+# Table S2 from Thibodeau 
+#10.1016/j.urolonc.2015.11.001
+
+Fuhup<- probeset %>%
+	filter(!is.na(probeset$Geneset_Fuhrman) & probeset$Geneset_Fuhrman== "Up") %>%
+	pull(Probeset) 
+
+Fuhdown<- probeset %>%
+	filter(!is.na(probeset$Geneset_Fuhrman) & probeset$Geneset_Fuhrman== "Down") %>%
+	pull(Probeset) 
+
+# Corvus adenosine signatures
+
+adenosineNanostring <- probeset %>%
+	filter(grepl("Nano",probeset$Geneset_Adenosine)) %>%
+	pull(Probeset)  
+	
+adenosineRNAseq <- probeset %>%
+	filter(grepl("RNA",probeset$Geneset_Adenosine)) %>%
+	pull(Probeset) 
+
+adenosineShort <- probeset %>%
+	filter(grepl("Short",probeset$Geneset_Adenosine)) %>%
+	pull(Probeset)  
+
+
+#ccrcc1 score
+ccrcc1up<- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC) & probeset$Geneset_ccRCC== "ccrcc1.up") %>%
+	pull(Probeset) 
+
+ccrcc1down<- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC) & probeset$Geneset_ccRCC== "ccrcc1.dn") %>%
+	pull(Probeset) 
+
+
+#ccrcc2 score
+ccrcc2up<- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC) & probeset$Geneset_ccRCC== "ccrcc2.up") %>%
+	pull(Probeset) 
+
+ccrcc2down<- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC) & probeset$Geneset_ccRCC== "ccrcc2.dn") %>%
+	pull(Probeset) 
+
+#ccrcc3 score
+ccrcc3up<- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC) & probeset$Geneset_ccRCC== "ccrcc3.up") %>%
+	pull(Probeset) 
+
+ccrcc3down<- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC) & probeset$Geneset_ccRCC== "ccrcc3.dn") %>%
+	pull(Probeset) 
+
+
+#ccrcc4 score
+ccrcc4up<- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC) & probeset$Geneset_ccRCC== "ccrcc4.up") %>%
+	pull(Probeset) 
+
+ccrcc4down<- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC) & probeset$Geneset_ccRCC== "ccrcc4.dn") %>%
+	pull(Probeset)
+
+#BMS93
+bmsup<- probeset %>%
+	filter(!is.na(probeset$Geneset_CM009) & probeset$Geneset_CM009== "CM009_up") %>%
+	pull(Probeset) 
+
+bmsdown<- probeset %>%
+	filter(!is.na(probeset$Geneset_CM009) & probeset$Geneset_CM009== "CM009_down") %>%
+	pull(Probeset)
+
+#EMT stroma
+emt <- probeset %>%
+	filter(!is.na(probeset$Geneset_EMTstroma)) %>%
+	pull(Probeset)
+
+#Javelin
+javelin <- probeset %>%
+	filter(!is.na(probeset$Geneset_Javelin)) %>%
+	pull(Probeset)
+
+```
+
+RMA expression data is read from
+
++ *`r rma_file `*
+
+Sample annotation is read from
+
++ *`r sdrf_file `*
+
+Probesets annotated with Signature Genesets are read from:
+
++ *`r probeset_file `*
+
+Geneset sources are documented in: 
+
++ Probeset_Geneset_Annotation.Rmd
+
+
+## Filter Baseline Expression dataset
+
+Filter the RMA data to the baseline samples, and then to the probesets for each geneset.
+ 
+```{r baseline_sets}
+# Baseline Subject sample Annotation
+sdrfScreen <- sdrf %>%
+	filter(biopsy.timepoint == "Screen", Response20pct != "NE")
+
+# Select 56 Screen Array columns plus Probeset column
+# 'Select' gets Assay.Name cols in the same order as the sdrf annotation
+# Order is Vital for ComplexHeatmap!! Vital for limma!
+
+rmascreen <- select(rma, one_of("Probeset",sdrfScreen$Assay.Name))
+
+
+# Subset rmascreen data to each of the score genesets
+rmaTcell <- rmascreen[rmascreen$Probeset %in% tcellprobesets,]
+#rmahif1a <- rmascreen[rmascreen$Probeset %in% hif1a_probesets,]
+rmaAngio <- rmascreen[rmascreen$Probeset %in% Geneset_Angio_probesets,]
+rmaMyeloid <- rmascreen[rmascreen$Probeset %in% Geneset_Myeloid_probesets,]
+rmaTeff <- rmascreen[rmascreen$Probeset %in% Geneset_Teff_probesets,]
+rmaMerckup <- rmascreen[rmascreen$Probeset %in% Merckup,]
+rmaMerckdown <- rmascreen[rmascreen$Probeset %in% Merckdown,]
+rmaFuhup <- rmascreen[rmascreen$Probeset %in% Fuhup,]
+rmaFuhdown <- rmascreen[rmascreen$Probeset %in% Fuhdown,]
+rmaadenosineNano <- rmascreen[rmascreen$Probeset %in% adenosineNanostring,]
+rmaadenosineRNA <- rmascreen[rmascreen$Probeset %in% adenosineRNAseq,]
+rmaadenosineShort <- rmascreen[rmascreen$Probeset %in% adenosineShort,]
+rmaccrcc1up <- rmascreen[rmascreen$Probeset %in% ccrcc1up,]
+rmaccrcc1down <- rmascreen[rmascreen$Probeset %in% ccrcc1down,]
+rmaccrcc2up <- rmascreen[rmascreen$Probeset %in% ccrcc2up,]
+rmaccrcc2down <- rmascreen[rmascreen$Probeset %in% ccrcc2down,]
+rmaccrcc3up <- rmascreen[rmascreen$Probeset %in% ccrcc3up,]
+rmaccrcc3down <- rmascreen[rmascreen$Probeset %in% ccrcc3down,]
+rmaccrcc4up <- rmascreen[rmascreen$Probeset %in% ccrcc4up,]
+rmaccrcc4down <- rmascreen[rmascreen$Probeset %in% ccrcc4down,]
+rmabmsup <- rmascreen[rmascreen$Probeset %in% bmsup,]
+rmabmsdown <- rmascreen[rmascreen$Probeset %in% bmsdown,]
+rmaemt <- rmascreen[rmascreen$Probeset %in% emt,]
+rmajavelin <- rmascreen[rmascreen$Probeset %in% javelin,]
+
+```
+ 
+## Calculation of Signature Scores
+
+RMA values for each probeset in a Geneset are Z-scored across the screen samples. For each Sample, the median of the Z-scores is the final score.  
+
+When a score is composed of 'up' and 'down' components, the z-score for the 'down' genes is calculated seperately, then the 'down' Z-scores are multiplied by -1 to flip the sign. For negative 'down' scores this gives a positive value, and for positive 'down' scores this gives a negative value. Then the data tables are merged and the median score is taken. Method weights the contribution of each gene equally. The median -score could be from a positive or negative gene.
+
+Scores are then merged into the Sample Annotation table for the Screen Samples.
+
+```{r Calculate_score}
+
+##### CD3score
+# Transpose rma data to columns, Z score, transpose back to rows, get median, transpose to a sample level annotation
+tcellscore<- as.data.frame(t(scale(t(rmaTcell[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "CD3TCR.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, tcellscore,
+								  by = "Assay.Name")
+
+###### angioScore
+# Transpose rma data to columns, Z score, transpose back to rows, get median, transpose to a sample level annotation
+angioScore<- as.data.frame(t(scale(t(rmaAngio[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "IM150_Angio.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, angioScore,
+								  by = "Assay.Name")
+##### myeloidScore
+# Transpose rma data to columns, Z score, transpose back to rows, get median, transpose to a sample level annotation
+myeloidScore<- as.data.frame(t(scale(t(rmaMyeloid[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "IM150_MyeloidInfl.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, myeloidScore,
+								  by = "Assay.Name")
+
+
+##### teffScore
+# Transpose rma data to columns, Z score, transpose back to rows, get median, transpose to a sample level annotation
+teffScore<- as.data.frame(t(scale(t(rmaTeff[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "IM150_Teff.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, teffScore,
+								  by = "Assay.Name")
+
+##### merck18Score
+#Do scores by calculating up AND down, flip sign on down then merge, then taking median
+merckUpScore <- as.data.frame(t(scale(t(rmaMerckup[,-1]))))
+merckDownScore <- -1*(as.data.frame(t(scale(t(rmaMerckdown[,-1])))))
+
+merckScore <- rbind(merckUpScore,merckDownScore) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "Merck18.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, merckScore,
+								  by = "Assay.Name")
+
+
+
+
+#####Fuhrman Score
+fuhUpScore<- as.data.frame(t(scale(t(rmaFuhup[,-1]))))
+fuhDownScore <- -1*(as.data.frame(t(scale(t(rmaFuhdown[,-1])))))
+
+fuhScore <- rbind(fuhUpScore,fuhDownScore) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "Fuhrman.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, fuhScore,
+								  by = "Assay.Name")
+
+
+
+#####
+#Corvus adenosine short
+# Transpose rma data to columns, Z score, transpose back to rows, get median, transpose to a sample level annotation
+adenosineShortScore <- as.data.frame(t(scale(t(rmaadenosineShort[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "Ad_Short.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, adenosineShortScore,
+								  by = "Assay.Name")
+
+#Corvus adenosine NANOSTRING
+# Transpose rma data to columns, Z score, transpose back to rows, get median, transpose to a sample level annotation
+adenosineNanoScore <- as.data.frame(t(scale(t(rmaadenosineNano[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "Adenosine.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, adenosineNanoScore,
+								  by = "Assay.Name")
+
+#Corvus adenosine RNAseq
+# Transpose rma data to columns, Z score, transpose back to rows, get median, transpose to a sample level annotation
+adenosineRNAseqScore <- as.data.frame(t(scale(t(rmaadenosineRNA[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "Ad_RNAseq.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, adenosineRNAseqScore,
+								  by = "Assay.Name")
+
+##### ccrcc1 Score
+ccrcc1UpScore<- as.data.frame(t(scale(t(rmaccrcc1up[,-1]))))
+ccrcc1DownScore <- -1*(as.data.frame(t(scale(t(rmaccrcc1down[,-1])))))
+
+ccrcc1Score <- rbind(ccrcc1UpScore,ccrcc1DownScore) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "ccrcc1.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, ccrcc1Score,
+								  by = "Assay.Name")
+##### ccrcc2 Score
+ccrcc2UpScore<- as.data.frame(t(scale(t(rmaccrcc2up[,-1]))))
+ccrcc2DownScore <- -1*(as.data.frame(t(scale(t(rmaccrcc2down[,-1])))))
+
+ccrcc2Score <- rbind(ccrcc2UpScore,ccrcc2DownScore) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "ccrcc2.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, ccrcc2Score,
+								  by = "Assay.Name")
+
+##### ccrcc3 Score
+ccrcc3UpScore<- as.data.frame(t(scale(t(rmaccrcc3up[,-1]))))
+ccrcc3DownScore <- -1*(as.data.frame(t(scale(t(rmaccrcc3down[,-1])))))
+
+ccrcc3Score <- rbind(ccrcc3UpScore,ccrcc3DownScore) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "ccrcc3.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, ccrcc3Score,
+								  by = "Assay.Name")
+
+##### ccrcc4 Score
+ccrcc4UpScore<- as.data.frame(t(scale(t(rmaccrcc4up[,-1]))))
+ccrcc4DownScore <- -1*(as.data.frame(t(scale(t(rmaccrcc4down[,-1])))))
+
+ccrcc4Score <- rbind(ccrcc4UpScore,ccrcc4DownScore) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "ccrcc4.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, ccrcc4Score,
+								  by = "Assay.Name")
+
+
+#####bms.Score
+bmsUpScore<- as.data.frame(t(scale(t(rmabmsup[,-1]))))
+bmsDownScore <- -1*(as.data.frame(t(scale(t(rmabmsdown[,-1])))))
+
+bmsScore <- rbind(bmsUpScore,bmsDownScore) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "BMS.Score")
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, bmsScore,
+								  by = "Assay.Name")
+
+##### EMTstromaScore
+# Transpose rma data to columns, Z score, transpose back to rows, get median, transpose to a sample level annotation
+emtScore<- as.data.frame(t(scale(t(rmaemt[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "EMTstroma.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, emtScore,
+								  by = "Assay.Name")
+
+##### JavelinScore
+# Transpose rma data to columns, Z score, transpose back to rows, get median, transpose to a sample level annotation
+javelinScore<- as.data.frame(t(scale(t(rmajavelin[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "Javelin.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, javelinScore,
+								  by = "Assay.Name")
+```
+
+
+
+## ccrcc group assignment
+
+### ccrccTopScore: Use the max score values to assign ccrcc group
+
+Here I am selecting "ccrccTopScore" as whichever score is the highest for that patient. 
+
+
+```{r maxcol_ccrcc}
+
+sdrfScreenccrcc <- sdrfScreen%>%
+	select(ccrcc1.Score,
+		   ccrcc2.Score,
+		   ccrcc3.Score,
+		   ccrcc4.Score)
+
+ccrccTopScore<-colnames(sdrfScreenccrcc)[max.col(sdrfScreenccrcc,ties.method="first")]
+
+sdrfScreen <- cbind(sdrfScreen,
+				ccrccTopScore)
+
+sdrfScreen$ccrccTopScore <- factor(sdrfScreen$ccrccTopScore,
+						   levels = c("ccrcc1.Score",
+		   "ccrcc2.Score",
+		   "ccrcc3.Score",
+		   "ccrcc4.Score"))
+
+```
+
+### Plot ccrccTopScore v. ccrcc4 
+
+This plot confirms the Top Score was assigned correctly.
+
+```{r boxplot_ccrccTopScore}
+
+
+plotcount <- nrow(sdrfScreen)
+
+boxplot <- sdrfScreen %>% 
+			ggplot(aes(x = ccrccTopScore, y = ccrcc4.Score)) +
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = Response20pct),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=1, jitter.width = 0.2)) +
+	scale_shape_manual(values=c(3,1)) +
+	scale_colour_manual(name = 'Response',
+						values = setNames(c('black','orange'),
+										  c("Not20pct", "20pctDec")))+
+	scale_y_continuous(breaks=seq(-1, 1, 1)) +
+	labs(title = "CA209-009 Baseline Biopsy: ccrcc4 v. ccrccTopScore",
+		 subtitle = paste("Subjects with Screen Affymetrix, N=",plotcount),
+		 x = "ccrccTopScore Category",
+		 y = "ccrcc4 signature") +
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE)) +
+	stat_compare_means()
+
+print(boxplot)
+```
+
+### ccrccCluster: hcluster to assign ccrcc
+
+Cluster on the "70" gene expression data itself, not the 4 scores!! I tested several methods using CM214 data.
+
+Ward.D2 performs the best at overlap, and is the method that proved most plausible in clustering ccrcc70 heatmaps. 
+
+Using cutree(clusters, 4), the table has the 4 clusters in rows and the assignment by ccrccTopScore in the columns. 
+
+After examining the table, I relabel the 4 clusters to reflect the ccrcc groups 1-4.
+
+```{r cluster_ccrcc}
+
+
+#filter the expression data to the 63 ccrcc70 probesets
+
+ccrcc63<- probeset %>%
+	filter(!is.na(probeset$Geneset_ccRCC)) %>%
+	pull(Probeset) 
+
+
+#Extract the expression data 
+rmaccrcc <- rmascreen%>%
+	filter(Probeset %in% ccrcc63)
+
+# scaled_mat of expression values
+# Z-score the data
+scaled_mat = as.data.frame(scale(t(rmaccrcc[,-1])))
+scaled_mat <- rownames_to_column(scaled_mat, var = "Assay.Name")
+
+#merge to design to get in the same order
+
+clusterdata <- sdrfScreen%>%
+	select("Assay.Name")%>%
+	left_join(scaled_mat,
+			  by = "Assay.Name")
+
+
+clusterswd2 <- hclust(dist(clusterdata[, 2:64]),
+				   method = "ward.D2")
+
+ccrccClusterwd2 <- cutree(clusterswd2, 4)
+
+
+kable(table(ccrccClusterwd2, sdrfScreen$ccrccTopScore),
+	  caption = "TopScore in columns, ward.D2 clusters in rows")
+
+```
+
+```{r add_ward2}
+
+sdrfScreen <- cbind(sdrfScreen, ccrccClusterwd2)
+
+sdrfScreen <- rename(sdrfScreen, ccrccCluster = ccrccClusterwd2)
+
+sdrfScreen$ccrccCluster <- gsub("1","ccrccthree",sdrfScreen$ccrccCluster)
+sdrfScreen$ccrccCluster <- gsub("2","ccrcc2",sdrfScreen$ccrccCluster)
+sdrfScreen$ccrccCluster <- gsub("3","ccrcc1",sdrfScreen$ccrccCluster)
+sdrfScreen$ccrccCluster <- gsub("4","ccrcc4",sdrfScreen$ccrccCluster)
+sdrfScreen$ccrccCluster <- gsub("ccrccthree","ccrcc3",sdrfScreen$ccrccCluster)
+
+```
+
+
+
+## Outputs
+
+```{r outputs}
+
+#sdrf Dataset with signature scores
+scores_file  <- paste0(results_dir, "/GEP_Table_BiopsyScreen_GEPSignatures_sdrf.txt")
+
+write_tsv(sdrfScreen, scores_file)
+
+```
+
+Save the Screen sdrf with scores and ccrcc clusters to:
+
++*`r scores_file`*
+

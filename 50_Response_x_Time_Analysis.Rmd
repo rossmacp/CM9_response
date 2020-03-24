@@ -1,0 +1,422 @@
+---
+title: "Genes Change over time associated with Response"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+
+##_ Set knitr root directory to correspond to project working directory 
+##_  setting based on structure with code in <project dir>/code
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+## Procedure
+
+1. Load rma data, nlme results, sample annotation, probeset annotation
+1. Load clinical data file, used to annotate 42 paired sample Patients
+1. Filter nlme results to 189 genes associated with response change over time
+1. AND with >1.25-fold change in responders
+1. I am not using criteria for a difference at Week 4 (56prbs)
+1. Calculate the effect size
+1. Subset the RMA data to the 42 paired samples
+1. Make dataframe of Diff in RMA values (Week4 - Screen) per Patient
+1. Make Annotated Heatmap of Change in Expression
+1. Make boxplot of top hit
+1. Save table of 189 genes
+
+# Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+## Load packages ##
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(ComplexHeatmap)
+library(circlize)
+library(ggpubr)
+```
+
+
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+
+
+```
+
+```{r palettes}
+
+
+# shape map for prior therapy
+shape_prior <- c("PriorTherapy_Yes" = 16, 
+              "PriorTherapy_No" = 18)
+
+
+# color map for response
+color_response <- c("Not20pct" = "black", 
+              "20pctDec" = "goldenrod2")
+
+```
+
+## Data Sources
+
+```{r loaddata}
+
+# nlme Results
+TumorRESPfile <- paste(data_dir, "CA209009-tumorAffy-table02-v01.csv", sep = "/")
+BiopsyRESP <- read.csv(TumorRESPfile, stringsAsFactors=FALSE, header=TRUE, na.strings = "NA")
+
+# SDRF (Sample and Data Relationship Format) file from Array Express
+sdrf_file <- paste(data_dir, "E-MTAB-3218 sdrf_response.txt", sep = "/")
+sdrf <- read_tsv(sdrf_file)
+
+# Affymetrix probeset to Gene annotation
+probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
+probeset <- read_tsv(probeset_file)
+
+# Expression values
+rma_file <- paste(data_dir, "CA209009-tumorAffy-HGU219_HS_ENTREZG.rma", sep = "/")
+rma <- read_tsv(rma_file)
+
+
+# Patient Annotation
+# Anonymized
+clinicalData_file <- paste(data_dir, "CM9_Patient_Annotation.txt", sep = "/" )
+clinicalData <- read_tsv(clinicalData_file)
+
+
+```
+
+## Time.response Gene Results Table
+
+I am going to select the 189 genes using:
+
++ p.response < P05 (Umbrella test for difference in means at any timepoint)
++ p.response.time < P01 (Contrast for difference in slope of change over time)
++ absolute difference in Responder means  >= 0.32165 (1.25-fold effect size over Time in Responders)
+
+
+```{r results}
+# Filter Parameters
+P01 <- 0.01
+P05 <- 0.05
+Fold13 <- 0.3785
+Fold12 <- 0.263
+Fold125 <- 0.32165
+
+
+# To subset the 189 probesets with a Time.Response effect, with 1.25x in Responders
+TumTimeRESPeffect <- filter(BiopsyRESP, 
+							p.response < P05,
+							p.response.time < P01,
+							#p.response28 < P01,
+							#abs(response28) > Fold125
+							abs(DecGE20pc_Day28_GrpAvg-DecGE20pc_Day0_GrpAvg) > Fold125) %>% 
+	dplyr::select(Gene, p.response, 
+				  p.response.time, q.response.time,
+				  p.response28,
+		   DecLT20pc_Day0_GrpAvg, DecGE20pc_Day0_GrpAvg,
+		   DecLT20pc_Day28_GrpAvg, DecGE20pc_Day28_GrpAvg)
+
+
+# Merge in updated gene annotation
+TumTimeRESPeffect <- right_join(probeset [,1:5], TumTimeRESPeffect,
+								  by = c("Probeset" = "Gene"))
+
+# calculate Effect size using modeled group means
+TumTimeRESPeffect <- mutate(TumTimeRESPeffect, 
+									 Effect.Size.Resp = round(DecGE20pc_Day28_GrpAvg-DecGE20pc_Day0_GrpAvg,2),
+									Effect.Size.NonResp = round(DecLT20pc_Day28_GrpAvg-DecLT20pc_Day0_GrpAvg,2))
+
+
+# calculate Foldchange using modeled group means
+TumTimeRESPeffect <- mutate(TumTimeRESPeffect, 
+								   Fold.Change.Resp = round(2^(DecGE20pc_Day28_GrpAvg-DecGE20pc_Day0_GrpAvg),2),
+								   Fold.Change.NonResp = round(2^(DecLT20pc_Day28_GrpAvg-DecLT20pc_Day0_GrpAvg),2))
+
+
+# Round modeled group mean RMA values
+TumTimeRESPeffect <- TumTimeRESPeffect %>%
+		mutate(Responder_Day0_GrpAvg = round(DecGE20pc_Day0_GrpAvg,2))%>%
+	mutate(NonResponder_Day0_GrpAvg = round(DecLT20pc_Day0_GrpAvg,2))%>%
+	mutate(Responder_Day28_GrpAvg = round(DecGE20pc_Day28_GrpAvg,2))%>%
+	mutate(NonResponder_Day28_GrpAvg = round(DecLT20pc_Day28_GrpAvg,2))%>%
+	select(-DecGE20pc_Day0_GrpAvg, -DecLT20pc_Day0_GrpAvg,
+		   -DecGE20pc_Day28_GrpAvg, -DecLT20pc_Day28_GrpAvg)
+
+
+```
+
+## Time.Response Subject sample Annotation
+
+Subset the Sample annotation to the 42 paired samples
+
+```{r samples}
+
+sdrfTime <- sdrf %>%
+	filter(Subject_Affy_Status == "42Pairs", Response20pct != "NE")
+
+annot42 <- clinicalData %>%
+	filter(Subject_Affy_Status == "42Pairs", Response20pct != "NE")
+
+# Insert MPCT biopsy where the lesion is the same pre/post
+annot42$MPCTbiopsy <- annot42$MPCTbiopsyS1
+annot42$MPCTbiopsy[annot42$MatchedLesionBiopsy == "FALSE"] <- NA
+
+```
+
+## Screen and Week4 Gene RMA expression Values
+
+Obtain the RMA data for only the paired samples
+
+```{r rma_diff}
+
+# Make Colnames match "Assay.Name" in sdrf annotation
+colnames(rma) <- sub("ENTREZG-", "", colnames(rma))
+rma <- dplyr::rename(rma, Probeset = X1)
+
+# Filter rma data to 189 probesets and 84 paired Array columns plus Probeset column
+rma189 <- rma[rma$Probeset %in% TumTimeRESPeffect$Probeset, ]
+rma189 <- select(rma189, one_of("Probeset",sdrfTime$Assay.Name))
+
+# Each observation in one row
+# 189 probesets x 84 observations
+rma189rows <- rma189 %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrf, 
+					 c("Assay.Name", "biopsy.timepoint", "Response20pct", 
+					   "individual", "clinical.history"))) 
+
+# Make dataframe of diff in RNA values (Week4 - Screen) per subject
+# 189 probesets by 42 subjects
+rma189diff <- rma189rows %>%
+	select(-Assay.Name) %>% #if not there are 2 assays per subject per probeset
+	group_by(individual,Probeset) %>% #one row per subject per probeset
+	spread(biopsy.timepoint,RMA) %>% #2 timepoint columns with RMA value
+	mutate(Change = Week4 - Screen) %>% #caculate Diff
+	select(Probeset,individual,Change) %>% #only necessary columns
+	group_by(Probeset) %>% #one row per probeset
+	spread(individual,Change) #42 Individuals columns with Change value
+
+#Put data columns in the same order as the annotation dataframe
+colorder <- annot42$SUBJID
+rma189diff <- rma189diff[,c("Probeset",colorder)]
+```
+
+## Heatmap of the change in expression values
+
+```{r heatmap}
+
+#make a row annotation matrix in the rma datset order
+row189 <- left_join(rma189diff[,1], probeset[,1:5], by = "Probeset")
+
+# Matrix will be the heatmap of Diff values (log fold change)
+mat = rma189diff[,-1]
+rownames(mat) =  rma189diff$Probeset
+
+
+# Top heatmap annotation is tumor burden reduction; MPCT and MPCT biopsy
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(annot42$MPCTbiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(annot42$MPCTbiopsy > -19,
+						   												"black", "goldenrod2"))),
+						      annotation_height = unit(c(3), "cm"))
+
+#draw(ha_top,1:42)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = annot42$Response20pct,
+							  Matched = annot42$MatchedLesionBiopsy,
+							  colname = anno_text(annot42$SUBJID, rot = 90, just = "right", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 8)),
+							  col = list(Matched = c("TRUE"="goldenrod2","FALSE"="Black"),
+							  		   response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2")),
+							  na_col = "white",
+							  annotation_height = unit(c(0.5, 0.5,1), "cm"))
+
+# draw(ha_bottom,1:42)
+
+# Provide column order as descending MPCT (ie waterfall plot)
+ordering = order(-annot42$MPCTrank)
+
+heatmap_object = Heatmap(mat,
+						 col = colorRamp2(c(-1, 0, 1), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 km = 2,
+						 show_row_names = FALSE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CA209-009: 42 pairs for 189 Response.Time",
+						 show_column_names = FALSE,
+						 width = unit(10, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(3, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(2, "cm")) +
+	rowAnnotation(IRIS = row189$IRIS_Most_Specific,
+				  col = list(IRIS = 
+				  		   	c(`T Cell` = "darkolivegreen1",
+				  		   	  `NK Cell` = "darkolivegreen1",
+				  		   	  `B Cell` = "darkolivegreen1",
+				  		   	  Lymphoid = "darkolivegreen1",
+				  		   	  `Dendritic Cell` = "blue",
+				  		   	  Neutrophil = "blue",
+				  		   	  Monocyte = "blue",
+				  		   	  Myeloid = "blue",
+				  		   	  Multiple = "goldenrod2")),
+				  na_col = "white",
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_All_TimeResponseEffect.pdf")
+
+pdf(file=heatmap_file)
+
+
+
+draw(heatmap_object, padding = unit(c(2, 20, 2, 2), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("Matched", 
+					{grid.text("Matched Lesion",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+# decorate_annotation("barplot1", 
+# 					{grid.text("MPCT",
+# 							   unit(-10, "mm"), just = "bottom",
+# 							   rot = 90, check.overlap = T,
+# 							   gp = gpar(fontsize = 10))})
+
+
+decorate_annotation("barplot2", 
+					{grid.text("Matched Biopsy\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 10))})
+
+	
+dev.off()
+
+```
+
+## Boxplot of a selected Probeset
+
+```{r boxplot}
+
+mycomparisons <- list(c("Screen","Week4"))
+
+# Define the desired probeset and get its Symbol
+#3606_at LOC3606 IL18
+probesetwanted <- "3606_at"
+genewanted <- as.character(probeset[probeset$Probeset == probesetwanted, 4])
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+onegene <- rma %>% 
+	filter(rma$Probeset == probesetwanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrf, 
+					 c("Assay.Name", "biopsy.timepoint", "Response20pct", 
+					   "individual", "clinical.history"))) %>%
+	filter(Response20pct != "NE")
+
+# Set levels of Response factor to determine plotting order
+onegene$Response20pct <-factor(onegene$Response20pct, 
+							   levels = c("Not20pct","20pctDec"))
+# Set levels of biopsy.timepoint factor to determine plotting order
+onegene$biopsy.timepoint <-factor(onegene$biopsy.timepoint, 
+							   levels = c("Screen","Week4"))
+
+# Convert "individual" from numeric
+onegene$individual <- as.factor(as.character(onegene$individual))
+
+# Count number of datapoints plotted
+plotcount <- nrow(onegene)
+
+# Plot baseline vs Week 4 expression values for gene
+boxplot <- ggplot(onegene,
+				  aes(x = biopsy.timepoint, y = RMA)) +
+	geom_boxplot(aes(biopsy.timepoint),
+				 outlier.shape = NA,
+				 alpha=0.2) +
+	geom_point(aes(color = Response20pct,shape= clinical.history),
+			   size = 2,
+			   position = position_jitter(w = 0.2, h = 0)) +
+		scale_colour_manual(name = 'Response',
+						values = c("black", "goldenrod2")) +
+	 scale_shape_manual(name = 'Prior Therapy',
+	 						values=c(16,18)) +
+	geom_line(aes(group = individual), 
+			  colour = "black", alpha=0.3) +
+			 scale_y_continuous(breaks=seq(3,9,1),
+		 			   limits=c(3, 9))+
+	facet_grid(~Response20pct)+
+	labs(title = paste("CA209-009 Biopsy: ",probesetwanted, "=", genewanted),
+		 subtitle = paste("Screen and/or Week4 Affymetrix, N=",plotcount),
+		 x = "Response Category",
+		 y = "Expression signal, RMA") +
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(shape = guide_legend(nrow=2,byrow=TRUE),
+		   fill = guide_legend(nrow=2,byrow=TRUE)) +
+				scale_x_discrete(labels=c("Screen" = "Screen", 
+							  "Week4" = "Day28"))+
+	stat_compare_means(method="t.test", size = 6,
+					   aes(label = paste0("P = ", ..p.format..)),
+					   comparisons = mycomparisons,
+					   vjust = "inward")+
+	theme_dj(16)
+
+print(boxplot)
+```
+
+##  Output Results
+
+```{r output}
+
+
+# Table of 189 genes
+# Count the hits and make an output filename
+countTimeRESP <- nrow(TumTimeRESPeffect)
+TumTimeRESP_file <- paste0(results_dir,"/",
+						"GEP_Table_BiopsyAll_TimeResponseEffect_",countTimeRESP,"prbs",".txt")
+
+# Write tsv file of 189prbs, annotation and statistics 
+write_tsv(TumTimeRESPeffect, TumTimeRESP_file)
+
+# Save box plot of selected gene
+box_file <- paste(results_dir, "/GEP_Boxplot_Time_By_Response_",
+				  paste0(probesetwanted,"_",genewanted),
+				  ".png",
+				  sep="")
+
+ggsave(boxplot, file = box_file, width=7, height=4,
+	   units = "in", dpi = 96)
+
+```
+
+
+

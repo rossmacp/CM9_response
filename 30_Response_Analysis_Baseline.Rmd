@@ -1,0 +1,609 @@
+---
+title: "Baseline Gene Expression associated with Response"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+
+##_ Set knitr root directory to correspond to project working directory 
+##_  setting based on structure with code in <project dir>/code
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+## Procedure
+
+1. Load rma data, nlme results, sample annotation, probeset annotation
+1. Filter nlme results to 311 genes associated with response at baseline
+1. Filter nlme results to relevant columns
+1. Calculate effect size
+1. Subset the Sample annotation to Screen samples
+1. Subset the RMA data to Screen samples
+1. Make Annotated Heatmap of Expression with all 311
+1. Make Annotated Heatmap of Expression with 93 with largest effect size
+1. Make boxplot of top hit
+1. Save Screen nlme results table
+
+## Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(ComplexHeatmap)
+library(circlize)
+library(ggpubr)
+
+```
+
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+
+
+```
+
+```{r palettes}
+
+
+# shape map for prior therapy
+shape_prior <- c("PriorTherapy_Yes" = 16, 
+              "PriorTherapy_No" = 18)
+
+
+# color map for response
+color_response <- c("Not20pct" = "black", 
+              "20pctDec" = "goldenrod2")
+
+```
+
+
+## Data sources
+
+```{r loaddata}
+
+# nlme Results
+#This has group means from the model, not raw RMA values
+TumorRESPfile <- paste(data_dir, "CA209009-tumorAffy-table02-v01.csv", sep = "/")
+BiopsyRESP <- read.csv(TumorRESPfile, stringsAsFactors=FALSE, header=TRUE, na.strings = "NA")
+
+# SDRF (Sample and Data Relationship Format) file from Array Express
+sdrf_file <- paste(data_dir, "E-MTAB-3218 sdrf_response.txt", sep = "/")
+sdrf <- read_tsv(sdrf_file)
+
+# Affymetrix probeset to Gene annotation
+probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
+probeset <- read_tsv(probeset_file)
+
+# RMA Expression values
+rma_file <- paste(data_dir, "CA209009-tumorAffy-HGU219_HS_ENTREZG.rma", sep = "/")
+rma <- read_tsv(rma_file)
+
+# 93 genes used for BMS CM009 signature, they are subset of the 311 probesets
+CM009_probesets <- probeset %>%
+	filter(!is.na(probeset$Geneset_CM009)) %>%
+	pull(Probeset)
+
+# Object containing Probesets for Geneset of T cell receptor transcripts
+tcellprobesets <- probeset %>%
+	filter(!is.na(probeset$Geneset_Tcell)) %>%
+	pull(Probeset)
+
+
+```
+
+## Baseline Response Association Results Table
+
+We are going to select the 311 genes using:
+
++ p.response < P05 (Umbrella test for difference in means at any timepoint)
++ p.response0 < P01 (Contrast for difference in means at baseline timepoint)
++ absolute difference in means  >= 0.32165 (1.25-fold effect size)
+
+```{r baseline_results}
+
+# Filter Parameters
+P01 <- 0.01
+P05 <- 0.05
+Fold13 <- 0.3785
+Fold12 <- 0.263
+Fold125 <- 0.32165
+
+
+# To subset the 311 probesets and their Baseline Response effect
+TumScreenRESPeffect <- filter(BiopsyRESP, 
+							  p.response < P05,
+							  p.response0 < P01,
+							  abs(response0) >= Fold125) %>%
+	select(Gene, p.response0,q.response0, DecLT20pc_Day0_GrpAvg, DecGE20pc_Day0_GrpAvg)
+	
+# Merge in updated gene annotation
+TumScreenRESPeffect <- right_join(probeset [,1:5], TumScreenRESPeffect,
+								  by = c("Probeset" = "Gene"))
+
+# calculate Effect size using modeled group means
+TumScreenRESPeffect <- mutate(TumScreenRESPeffect, 
+									 Effect.Size = round(DecGE20pc_Day0_GrpAvg-DecLT20pc_Day0_GrpAvg,2))
+
+# calculate Foldchange using modeled group means
+TumScreenRESPeffect <- mutate(TumScreenRESPeffect, 
+									 Fold.Change = round(2^(DecGE20pc_Day0_GrpAvg-DecLT20pc_Day0_GrpAvg),2))
+
+# Round the modeled group mean RMA values
+TumScreenRESPeffect <- TumScreenRESPeffect %>%
+	mutate(Responder_Day0_GrpAvg = round(DecGE20pc_Day0_GrpAvg,2))%>%
+	mutate(NonResponder_Day0_GrpAvg = round(DecLT20pc_Day0_GrpAvg,2))%>%
+	select(-DecGE20pc_Day0_GrpAvg, -DecLT20pc_Day0_GrpAvg)
+
+```
+
+## Baseline Subject sample Annotation
+
+```{r baseline_subjects}
+sdrfScreen <- sdrf %>%
+	filter(biopsy.timepoint == "Screen", Response20pct != "NE")
+
+```
+
+## Baseline Gene expression RMA Values
+
+```{r baseline_rma}
+
+# Make Colnames match "Assay.Name" in sdrf annotation
+colnames(rma) <- sub("ENTREZG-", "", colnames(rma))
+rma <- rename(rma, Probeset = X1)
+
+# Select 56 Screen Array columns plus Probeset column
+# Intermediate object, useful for plotting gene not in 311
+# 'Select' gets Assay.Name cols in the same order as the sdrf annotation - Vital for Heatmap!!
+rmascreen <- select(rma, one_of("Probeset",sdrfScreen$Assay.Name))
+
+# Subset rmascreen data to 311 probesets with 1.2-fold difference
+rma311 <- rmascreen[rmascreen$Probeset %in% TumScreenRESPeffect$Probeset, ]
+
+# Subset rmascreen data to 93 probesets with 1.5-fold difference
+rma93 <- rmascreen[rmascreen$Probeset %in% CM009_probesets,]
+
+```
+
+## Calculation of CD3TCR score at Baseline
+
+RMA values for the six CD3 receptor probesets are Z-scored across the 56 Screen samples. For each Sample, the median of the six Z-scores is the CD3sig.Score.  The CD3sig.Score is added to the sdrf sample annotation.
+
+```{r CD3sig_score}
+
+# Subset rmascreen data to just the 6 T cell receptor probesets 
+rmaCD3sig <- rmascreen[rmascreen$Probeset %in% tcellprobesets,]
+
+# Transpose rma data to columns, Z score, transpose back to 6 rows, get median of 6, transpose to a sample annotation
+CD3sigscore<- as.data.frame(t(scale(t(rmaCD3sig[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "CD3sig.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, CD3sigscore,
+								  by = "Assay.Name")
+```
+
+
+
+## Baseline Response gene expression heatmap for 311 genes
+
+```{r heatmap_311_waterfall}
+
+#make a row annotation matrix in the rma datset order
+row311 <- left_join(rma311[,1], probeset[,1:5], by = "Probeset")
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma311[,-1])))
+rownames(scaled_mat) = rma311$Probeset
+
+# Top heatmap annotation is tumor burden reduction; MPCT and MPCT biopsy
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(sdrfScreen$MPCTBiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(sdrfScreen$MPCTBiopsy > -19,
+						   												"black","goldenrod2"))),
+						   biopsy = sdrfScreen$BiopsySite,
+						   col = list( biopsy = c("LymphNode"  = "goldenrod2",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black")),
+							  na_col = "white",
+						   annotation_height = unit(c(3,.5), "cm"))
+
+# draw(ha_top,1:56)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = sdrfScreen$Response20pct,
+							  colname = anno_text(sdrfScreen$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  col = list(response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5), "cm"))
+
+# draw(ha_bottom,1:56)
+
+# Provide column order as descending MPCT (ie waterfall plot
+# This works because data columns in same order as sdrf rows
+ordering = order(-sdrfScreen$MPCTrank)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 km = 2,
+						 show_row_names = FALSE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CA209-009: 56 Screen for 311 Response",
+						 show_column_names = FALSE,
+						 width = unit(9, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(4.5, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(2, "cm")) +
+	rowAnnotation(IRIS = row311$IRIS_Most_Specific,
+				  col = list(IRIS = 
+				  		   	c(`T Cell` = "darkolivegreen1",
+				  		   	  Lymphoid = "darkolivegreen1",
+				  		   	  Monocyte = "blue",
+				  		   	  Myeloid = "blue",
+				  		   	  Multiple = "goldenrod2")),
+				  na_col = "white",
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Screen_ResponseEffect.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+# decorate_annotation("AffyStatus", 
+# 					{grid.text("Affymetrix",
+# 							   unit(-2, "mm"), just = "right",
+# 							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("barplot2", 
+					{grid.text("Baseline Biopsy\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+dev.off()
+
+```
+
+
+## Baseline Response gene expression heatmap for 93 top genes
+
+```{r heatmap_93_waterfall}
+
+#make a row annotation matrix in the rma datset order
+row93 <- left_join(rma93[,1], probeset[,1:5], by = "Probeset")
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma93[,-1])))
+rownames(scaled_mat) = rma93$Probeset
+
+# Top heatmap annotation is tumor burden reduction; MPCT and MPCT biopsy
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(sdrfScreen$MPCTBiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(sdrfScreen$MPCTBiopsy > -19,
+						   												"black","goldenrod2"))),
+						   biopsy = sdrfScreen$BiopsySite,
+						   col = list( biopsy = c("LymphNode"  = "goldenrod2",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black")),
+							  na_col = "white",
+						   annotation_height = unit(c(3,.5), "cm"))
+
+# draw(ha_top,1:56)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = sdrfScreen$Response20pct,
+							  colname = anno_text(sdrfScreen$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  col = list(response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5), "cm"))
+
+# draw(ha_bottom,1:56)
+
+# Provide column order as descending MPCT (ie waterfall plot
+# This works because data columns in same order as sdrf rows
+ordering = order(-sdrfScreen$MPCTrank)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 km = 2,
+						 show_row_names = FALSE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CA209-009: 56 Screen for 93 Response",
+						 show_column_names = FALSE,
+						 width = unit(9, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(4.5, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(2, "cm")) +
+	rowAnnotation(IRIS = row93$IRIS_Most_Specific,
+				  col = list(IRIS = 
+				  		   	c(`T Cell` = "darkolivegreen1",
+				  		   	  Lymphoid = "darkolivegreen1",
+				  		   	  Monocyte = "blue",
+				  		   	  Myeloid = "blue",
+				  		   	  Multiple = "goldenrod2")),
+				  na_col = "white",
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Screen_ResponseEffect_93genes.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+# decorate_annotation("AffyStatus", 
+# 					{grid.text("Affymetrix",
+# 							   unit(-2, "mm"), just = "right",
+# 							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("barplot2", 
+					{grid.text("Baseline Biopsy\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+dev.off()
+
+```
+
+
+## Baseline Response gene expression heatmap, Clustering samples
+
+```{r heatmap_311_cluster}
+
+#make a row annotation matrix in the rma datset order
+row311 <- left_join(rma311[,1], probeset[,1:5], by = "Probeset")
+
+# scaled_mat will be the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(rma311[,-1])))
+rownames(scaled_mat) = rma311$Probeset
+
+# Top heatmap annotation is lesion reduction, Biopsy site and TCR score
+ha_top = HeatmapAnnotation(barplot2 = anno_barplot(sdrfScreen$MPCTBiopsy, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = ifelse(sdrfScreen$MPCTBiopsy > -19, 
+						   												"black", "goldenrod2"))),
+						   biopsy = sdrfScreen$BiopsySite,
+						   CD3TCR = sdrfScreen$CD3sig.Score,
+						   col = list(CD3TCR = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")),
+						   		   biopsy = c("LymphNode"  = "goldenrod2", "UNKNOWN" = "white",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black")),
+							  na_col = "white",
+						   annotation_height = unit(c(3,.5,.5), "cm"))
+
+# draw(ha_top,1:56)
+
+# Bottom heatmap annotation is response annotation, BOR?
+ha_bottom = HeatmapAnnotation(response = sdrfScreen$Response20pct,
+							  colname = anno_text(sdrfScreen$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 7)),
+							  col = list(response = c ("Not20pct" ="black", "20pctDec"= "goldenrod2", "NE" = "white")),
+							  na_col = "white",
+							  annotation_height = unit(c(.5,.5), "cm"))
+
+# draw(ha_bottom,1:56)
+
+# Provide column order as descending MPCT (ie waterfall plot)
+ordering = order(-sdrfScreen$MPCTrank)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue4", "white", "firebrick")), 
+						  cluster_rows = TRUE,
+						 show_row_names = FALSE,
+						  cluster_columns = TRUE,
+						 #column_order = ordering,
+						 column_title = "CA209-009: 55 Screen for 311 Response",
+						 show_column_names = FALSE,
+						 width = unit(9, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(4, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(1, "cm")) +
+	rowAnnotation(IRIS = row311$IRIS_Most_Specific,
+				  col = list(IRIS = 
+				  		   	c(`T Cell` = "darkolivegreen1",
+				  		   	  `NK Cell` = "darkolivegreen1",
+				  		   	  `B Cell` = "darkolivegreen1",
+				  		   	  Lymphoid = "darkolivegreen1",
+				  		   	  `Dendritic Cell` = "blue",
+				  		   	  Neutrophil = "blue",
+				  		   	  Monocyte = "blue",
+				  		   	  Myeloid = "blue",
+				  		   	  Multiple = "goldenrod2")),
+				  na_col = "white",
+				  width = unit(0.5, "cm"),
+				  show_annotation_name = TRUE)
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Screen_ResponseEffect_Cluster.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 15, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+
+decorate_annotation("barplot2", 
+					{grid.text("Screen Biopsy\n\ Reduction",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+decorate_annotation("CD3TCR", 
+					{grid.text("CD3TCR Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+dev.off()
+
+
+```
+
+## Boxplot of a selected gene
+
+```{r boxplot}
+
+# Define the desired probeset and grab the gene Symbol
+#9447_at = AIM2
+probesetwanted <- "9447_at"
+genewanted <- as.character(probeset[probeset$Probeset == probesetwanted, 4])
+
+
+#get the P value from the limma
+Pvalue_selectedGene <- TumScreenRESPeffect%>%
+	filter(Probeset == probesetwanted)%>%
+	pull(p.response0)
+
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+# Change rma311 to rmascreen if you want probeset not in 311
+onegene <- rmascreen %>% 
+	filter(rmascreen$Probeset == probesetwanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrf, 
+					 c("Assay.Name", "Response20pct", 
+					   "individual", "clinical.history")))
+
+# Set levels of Response factor to determine plotting order
+onegene$Response20pct <-factor(onegene$Response20pct, 
+							   levels = c("Not20pct","20pctDec"))
+
+# Count number of datapoints plotted
+plotcount <- nrow(onegene)
+
+# Plot baseline expression values for gene
+boxplot <- ggplot(onegene,
+				  aes(x = Response20pct, y = RMA)) +
+	geom_boxplot(outlier.shape = NA) +
+	geom_point(aes(colour = Response20pct, shape = clinical.history),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=.5, jitter.width = 0.2)) +
+	scale_colour_manual(name = 'Response',
+						values = color_response) +
+	scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+	labs(title = paste("CA209-009 Baseline Biopsy: ",probesetwanted, "=", genewanted),
+		 subtitle = paste("Subjects with Screen Affymetrix, N=",plotcount),
+		 x = "Response Category",
+		 y = "Expression signal, RMA") +
+			scale_x_discrete(labels=c("Not20pct" = "NonResponder\nN = 43", 
+							  "20pctDec" = "Responder\nN = 13"))+
+		scale_y_continuous(breaks=seq(2,9,1),
+					   limits=c(2, 9))+
+	theme(legend.position = "bottom",
+		  axis.text=element_text(size=12),
+		  axis.title=element_text(size=14,face="bold")) +
+	guides(color=guide_legend(nrow=2,byrow=TRUE), 
+		   shape = guide_legend(nrow=2,byrow=TRUE)) +
+	  geom_text(data=data.frame(x=0.0,y=8.5), 
+  		  aes(x, y), 
+  		  label= paste(genewanted,"\nP=",round(Pvalue_selectedGene,4)),
+  		  size = 6,
+  		  hjust = "inward")+
+	theme_dj(14)
+
+print(boxplot)
+```
+
++ responders *`r sum(sdrfScreen$Response20pct == "20pctDec")`*
++ Nonresponders *`r sum(sdrfScreen$Response20pct == "Not20pct")`*
+
+
+
+## Output Results
+
+```{r output}
+
+# Table of 311 baseline genes
+# Count the hits and make an output filename
+countScreenRESP <- nrow(TumScreenRESPeffect)
+TumScreenRESP_file <- paste0(results_dir,"/",
+						"GEP_Table_BiopsyScreen_ResponseEffect_",countScreenRESP,"prbs",".txt")
+
+# Write csv file of 311prbs, annotation and statistics 
+write_tsv(TumScreenRESPeffect, TumScreenRESP_file)
+
+# Save box plot of selected gene
+box_file <- paste(results_dir, "/GEP_Boxplot_Response_Baseline_",
+					   paste0(probesetwanted,"_",genewanted),
+					   ".png",
+					   sep="")
+
+ggsave(boxplot, file = box_file, width=6, height=6,
+	   units = "in", dpi = 96)
+```
+

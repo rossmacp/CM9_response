@@ -1,0 +1,1022 @@
+---
+title: "CA209009 baseline T cell correlates"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+```
+
+## Procedure
+
+1. Get RMA expression values for baseline samples for T cell receptor genes
+1. Calculate CD3 Signature Score
+1. Calculate association with Response
+1. Heatmap of CD3 Signature Score against clinical annotation
+1. Run correlation analysis
+1. Run Pathway analysis of anti-correlated genes
+1. Heatmap of key pathway: Hypoxia
+1. Scatter plots of key genes against CD3 Signature Score
+
+
+
+
+## Paths and Packages
+
+```{r paths_packages}
+# Provide paths
+data_dir <- "./data/import"
+results_dir <- "./results"
+work_dir <- "./work"
+
+
+## Load packages ##
+
+#tidyverse  bundles: ggplot2, dplyr, tidyr, readr, purrr and tibble
+suppressPackageStartupMessages(library(tidyverse))
+library(ComplexHeatmap)
+library(circlize)
+library(limma)
+library(knitr)
+```
+
+
+```{r functions}
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+
+
+```
+
+```{r palettes}
+
+
+# shape map for prior therapy
+shape_prior <- c("PriorTherapy_Yes" = 16, 
+              "PriorTherapy_No" = 18)
+
+
+# color map for response
+color_response <- c("Not20pct" = "black", 
+              "20pctDec" = "goldenrod2")
+
+```
+
+
+
+## Data Sources
+
+```{r loaddata}
+
+# Expression values
+rma_file <- paste(data_dir, "CA209009-tumorAffy-HGU219_HS_ENTREZG.rma", sep = "/")
+rma <- read_tsv(rma_file)
+
+# Make rma Colnames match "Assay.Name" in sdrf annotation
+colnames(rma) <- sub("ENTREZG-", "", colnames(rma))
+rma <- rename(rma, Probeset = X1)
+
+# SDRF (Sample and Data Relationship Format) file from Array Express
+# NB move from stash when finalized.
+sdrf_file <- paste(data_dir, "E-MTAB-3218 sdrf_response.txt", sep = "/")
+sdrf <- read_tsv(sdrf_file)
+sdrf$Response20pct <- as.factor(sdrf$Response20pct)
+sdrf$individual <- as.factor(sdrf$individual)
+sdrf$clinical.history <- as.factor(sdrf$clinical.history)
+
+# Affymetrix probeset to Gene annotation
+probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
+probeset <- read_tsv(probeset_file)
+
+# Object containing Probesets for Geneset of T cell CD3 receptor transcripts
+CD3sigprobesets <- probeset %>%
+	filter(!is.na(probeset$Geneset_Tcell)) %>%
+	pull(Probeset)
+
+# Object containing 88 Probesets for Geneset of ELVIDGE_HIF1A_TARGETS_DN
+hif1a_probesets <- probeset %>%
+	filter(!is.na(probeset$Geneset_ELVIDGE_HIF1A_TARGETS_DN)) %>%
+	pull(Probeset)
+
+```
+
+## Filter Baseline Expression dataset
+ 
+```{r CD3sig_baseline}
+# Baseline Subject sample Annotation
+sdrfScreen <- sdrf %>%
+	filter(biopsy.timepoint == "Screen", Response20pct != "NE")
+
+# Select 56 Screen Array columns plus Probeset column
+# 'Select' gets Assay.Name cols in the same order as the sdrf annotation
+# Order is Vital for ComplexHeatmap!! Vital for limma!
+
+rmascreen <- select(rma, one_of("Probeset",sdrfScreen$Assay.Name))
+
+# Subset rmascreen data to just the 6 T cell receptor probesets 
+rmaCD3sig <- rmascreen[rmascreen$Probeset %in% CD3sigprobesets,]
+
+```
+ 
+## Calculation of CD3TCR score
+
+RMA values for the six CD3 receptor probesets are Z-scored across the 56 Screen samples. For each Sample, the median of the six Z-scores is the CD3sig.Score.  The CD3sig.Score is added to the sdrf sample annotation.
+
+```{r CD3sig_score}
+
+# Transpose rma data to columns, Z score, transpose back to 6 rows, get median of 6, transpose to a sample annotation
+CD3sigscore<- as.data.frame(t(scale(t(rmaCD3sig[,-1])))) %>%
+	summarize_all(funs(median)) %>%
+	gather(key = "Assay.Name", value = "CD3sig.Score")
+
+
+# merge score into SDRF sample annotation
+sdrfScreen <- right_join(sdrfScreen, CD3sigscore,
+								  by = "Assay.Name")
+```
+
+
+## Association of CD3TCR Signature Score with Response
+
+```{r test_association_response}
+
+print(kruskal.test(CD3sig.Score ~ Response20pct, data = sdrfScreen))
+
+```
+
+At .05 significance level, we conclude that the CD3TCR Score in the Responder and Non-Responders are nonidentical populations.
+
+## Association of CD3TCR Signature Score with Prior therapy (includes VEGFi)
+
+```{r test_association_prior}
+
+print(kruskal.test(CD3sig.Score ~ clinical.history, data = sdrfScreen))
+
+```
+
+At .05 significance level, we conclude that the CD3TCR Score in the Prior-VEGFi versus VEGFi-naive patients are identical populations.
+
+## Association of CD3TCR Signature Score with PDL1 status
+
+```{r test_association_pdl1}
+
+sdrfScreenpdl1 <- filter(sdrfScreen, !is.na(PDL1cat))
+
+sdrfScreenpdl1$PDL1status <- NA
+sdrfScreenpdl1$PDL1status <- if_else(sdrfScreenpdl1$PDL1cat == "0%",
+									 "PDL1negative",
+									 "PDL1positive")
+
+sdrfScreenpdl1$PDL1status <- factor(sdrfScreenpdl1$PDL1status, levels = c("PDL1negative","PDL1positive"))
+
+print(kruskal.test(CD3sig.Score ~ PDL1status, data = sdrfScreenpdl1))
+
+```
+
+At .05 significance level, we conclude that the CD3TCR Score in the PDL1-positive versus PDL1-negative patients are identical populations.
+
+data:  CD3sig.Score by PDL1status
+Kruskal-Wallis chi-squared = 1.6202, df = 1, p-value = 0.2031
+
+## Association of CD3TCR Signature Score with VHL status
+
+```{r test_association_vhl}
+
+sdrfScreenvhl <- filter(sdrfScreen, !is.na(VHL))
+
+sdrfScreenvhl$VHLstatus <- NA
+sdrfScreenvhl$VHLstatus <- if_else(sdrfScreenvhl$VHL == "WT",
+									 "VHLwt",
+									 "VHLmut")
+
+sdrfScreenvhl$VHLstatus <- factor(sdrfScreenvhl$VHLstatus, 
+								  levels = c("VHLwt",
+									 "VHLmut"))
+
+print(kruskal.test(CD3sig.Score ~ VHLstatus, data = sdrfScreenvhl))
+
+```
+
+At .05 significance level, we conclude that the CD3TCR Score in the VHL-wt versus VHL-mutant patients are identical populations.
+
+data:  CD3sig.Score by VHLstatus
+Kruskal-Wallis chi-squared = 0.39231, df = 1, p-value = 0.5311
+
+## Heatmap of CD3 Signature Score against clinical annotation
+
+```{r CD3sig_heatmap}
+
+# Add the Gene Symbol to the T cell expression data table 
+# so it can be used to label heatmap rows
+rmaCD3sig2 <-  probeset %>%
+	select(Probeset,Symbol) %>%
+	inner_join(rmaCD3sig)
+
+# scaled_mat will be the body of the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(select(rmaCD3sig2, -Probeset, -Symbol))))
+rownames(scaled_mat) = rmaCD3sig2$Symbol
+
+# Provide column order as Ascending CD3sig.Score
+# This works because scaled_mat columns are in same order as SDRF rows
+ordering = order(sdrfScreen$CD3sig.Score)
+
+# Top heatmap annotation is CD3sig.Score
+ha_top = HeatmapAnnotation(CD3sig = sdrfScreen$CD3sig.Score,
+						   pdl1 = sdrfScreen$PDL1cat,
+						   purity = sdrfScreen$TP_strelka,
+						   barplot1 = anno_barplot(sdrfScreen$CD8PERCENT.BL, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = "black")),
+						   barplot2 = anno_barplot(sdrfScreen$CD4PERCENT.BL, axis = TRUE,baseline = 0,
+						   						gp = gpar(fill = "black")),
+						   col = list(CD3sig = colorRamp2(c(-2, 0, 2), 
+						   							   c("dodgerblue", "white", "firebrick")),
+						   			pdl1 = c("0%" = "white", "1to5%" = "red","5+%" = "red"),
+						   			purity = colorRamp2(c(0, 20, 100), 
+						   								c("dodgerblue", "white", "firebrick"))),
+						   annotation_height = unit(c(1,1,1,2,2), "cm"))
+
+#draw(ha_top,1:56)
+
+# Bottom heatmap annotation is response annotation, Prior Therapy, and Pt #
+ha_bottom = HeatmapAnnotation(response = sdrfScreen$Response20pct,
+							  vegf = sdrfScreen$clinical.history,
+							  biopsy = sdrfScreen$BiopsySite,
+							  vhl = sdrfScreen$VHL,
+							  colname = anno_text(sdrfScreen$individual, 
+							  					rot = -90, just = "left", 
+							  					offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 8)),
+							  col = list(vegf =
+							  		   	c("PriorTherapy_Yes"="black","PriorTherapy_No"="goldenrod2"),
+							  		   response = c("Not20pct" ="black", 
+							  		   			 "20pctDec"= "goldenrod2", 
+							  		   			 "NE" = "white"),
+							  		   biopsy = c("LymphNode"  = "goldenrod2",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black"),
+							  		   	vhl = c("Missense_Mutation" = "goldenrod2",
+								  		  "Nonsense_Mutation" = "goldenrod2",
+                                            "Frame_Shift_Del" = "goldenrod2" ,
+								  		  "Frame_Shift_Ins" = "goldenrod2",
+								  		  "Splice_Site" = "goldenrod2",
+								  		  "WT" = "black")
+							  		   ),
+							  na_col = "grey",
+							  annotation_height = unit(c(0.5,.5,.5,.5,1), "cm"))
+
+#draw(ha_bottom,1:56)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = FALSE,
+						 km = 1,
+						 show_row_names = TRUE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CA209-009: 56 Screen for 6 CD3 transcripts",
+						 show_column_names = FALSE,
+						 width = unit(7, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(8, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(6, "cm"))
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Screen_CD3sig_Score.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("CD3sig", 
+					{grid.text("CD3Sig Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+decorate_annotation("pdl1", 
+					{grid.text("PDL1 category",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("purity", 
+					{grid.text("Tumor Purity\nstrelka",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+decorate_annotation("barplot1", 
+					{grid.text("CD8 %",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 12))})
+
+decorate_annotation("barplot2", 
+					{grid.text("CD4 %",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 12))})
+					
+
+decorate_annotation("vegf", 
+					{grid.text("Prior VEGFi",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("vhl", 
+					{grid.text("VHL status",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+dev.off()
+```
+
+
+## Association analysis
+
+Run limma on 56 SCREEN samples, with CD3TCR Score as continuous variable
+
+
+```{r limma_CD3TCR}
+
+# make Probeset column into rownames
+data <- rmascreen %>% remove_rownames %>% column_to_rownames(var="Probeset")
+
+# Run limma
+design <- model.matrix(~CD3sig.Score,sdrfScreen) 
+fit <-lmFit(data, design)
+fit <- eBayes(fit)
+
+# Filter and Annotate association hit results
+results <- topTable(fit, coef=2,  number=Inf, sort.by = "B") %>% 
+	rownames_to_column(var="Probeset") %>%
+	left_join(select(probeset, -matches("Geneset")))
+
+kable(summary(decideTests(fit)),
+	  title = "CA209-009: Summary of regression against CD3sig Score")
+
+```
+
+## Significant Immune cell type-association
+
++ Summarize IRIS categories of transcripts significantly associated with Baseline CD3 Signature Score.
+
++ Identify any immune-associated transcripts that are negatively associated with Baseline CD3 Signature Score (no matter the P value). Examples include TMEM88, a 'myeloid-associated' transcript for a protein that binds Dishevelled. TMEM88 inhibits the TGF-beta1-stimulated cell proliferation, migration and extracellular matrix expression in keloid fibroblasts.
+
+```{r IRISsummary}
+
+# Filter and Annotate association hit results
+results05 <- topTable(fit, coef=2, p.value = 0.05, number=Inf, sort.by = "B") %>% 
+	rownames_to_column(var="Probeset") %>%
+	left_join(select(probeset, -matches("Geneset")))
+
+
+# Make a summary by direction of correlation and IRIS classes
+upsum <- results05 %>%
+	filter(logFC >0) %>%
+	count(IRIS_Most_Specific) %>%
+	rename("PositiveAssociation, N=1011" = n)
+
+downsum  <- results05 %>%
+	filter(logFC < 0) %>%
+	count(IRIS_Most_Specific) %>%
+	rename("NegativeAssociation, N=325"  = n)
+
+irisassociation <- left_join(upsum,downsum) %>%
+	arrange(match(IRIS_Most_Specific,c("T Cell","B Cell","NK Cell","Lymphoid","Dendritic Cell","Monocyte","Neutrophil","Myeloid","Multiple",NA)))
+	
+kable(irisassociation,
+	  title = "CA209-009: Summary of IRIS classes associated with CD3 Signature Score")
+```
+
+## Negatively associated IRIS
+
+Extract all negatively associated genes with IRIS annotation no  matter the Pvalue
+
+```{r results_negIRIS}
+# Filter and Annotate all negatively-associated immune-associated transcript results
+resultsnegIRIS<- topTable(fit, coef=2, number=Inf, sort.by = "B") %>% 
+	rownames_to_column(var="Probeset") %>%
+	left_join(select(probeset, -matches("Geneset"))) %>%
+	filter(logFC <0 & !is.na(IRIS_Most_Specific))
+
+```
+
+## Scatterplot of CCL28 expression
+
+```{r scatterplot_ccl28}
+
+# Define the desired probeset and grab the gene Symbol
+probesetwanted <- "56477_at"
+genewanted <- as.character(probeset[probeset$Probeset == probesetwanted, 4])
+
+#get the P value from the limma
+Pvalue_selectedGene <- results%>%
+	filter(Probeset == probesetwanted)%>%
+	pull(adj.P.Val)
+
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+onegene <- rmascreen %>% 
+	filter(rmascreen$Probeset == probesetwanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrfScreen, 
+					 c("Assay.Name", "Response20pct", 
+					   "individual", "clinical.history", "CD3sig.Score")))
+
+#count the samples
+plotcount <- nrow(onegene)
+
+scatterplot_ccl28 <- onegene %>%
+	ggplot(aes(x = CD3sig.Score, y = RMA))+
+	geom_point(aes(x = CD3sig.Score, y = RMA, 
+				   colour = Response20pct, shape = clinical.history),
+			   size = 3, position = position_jitter(0)) +
+		scale_colour_manual(name = 'Response',
+						values = color_response) +
+	scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+		 scale_y_continuous(breaks=seq(3,6,1),
+		 			   limits=c(2.25, 6.5))+
+	stat_smooth(method = "lm", se=TRUE, color="black", formula = y ~ x) +
+  labs(title = paste("CM9 Baseline Biopsy CD3TCR Score: ",probesetwanted, "=", genewanted),
+  	 	subtitle = paste("Samples with Affymetrix; N=",plotcount),
+  	 x = "CD3TCR Score",
+  	 		 y = "Expression signal, RMA") +
+		  geom_text(data=data.frame(x=0.5,y=6.4), 
+  		  aes(x, y), 
+  		  label= paste(genewanted,"\nP.Adj=",round(Pvalue_selectedGene,3)),
+  		  size = 6,
+  		  hjust = "outward")+
+	theme_dj(14)
+
+
+print(scatterplot_ccl28)
+```
+
+
+## Scatterplot of CA9 expression
+
+```{r scatterplot_CA9}
+
+# Define the desired probeset and grab the gene Symbol
+probesetwanted <- "768_at"
+genewanted <- as.character(probeset[probeset$Probeset == probesetwanted, 4])
+
+#get the P value from the limma
+Pvalue_selectedGene <- results%>%
+	filter(Probeset == probesetwanted)%>%
+	pull(adj.P.Val)
+
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+onegene <- rmascreen %>% 
+	filter(rmascreen$Probeset == probesetwanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrfScreen, 
+					 c("Assay.Name", "Response20pct", 
+					   "individual", "clinical.history", "CD3sig.Score")))
+
+#count the samples
+plotcount <- nrow(onegene)
+
+scatterplot_ca9 <- onegene %>%
+	ggplot(aes(x = CD3sig.Score, y = RMA))+
+	geom_point(aes(x = CD3sig.Score, y = RMA, 
+				   colour = Response20pct, shape = clinical.history),
+			   size = 3, position = position_jitter(0)) +
+		scale_colour_manual(name = 'Response',
+						values = color_response) +
+	scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+		 scale_y_continuous(breaks=seq(3,7,1),
+		 			   limits=c(2.25, 7.75))+
+	stat_smooth(method = "lm", se=TRUE, color="black", formula = y ~ x) +
+  labs(title = paste("CM9 Baseline Biopsy CD3TCR Score: ",probesetwanted, "=", genewanted),
+  	 	subtitle = paste("Samples with Affymetrix; N=",plotcount),
+  	 x = "CD3TCR Score",
+  	 		 y = "Expression signal, RMA") +
+		  geom_text(data=data.frame(x=0.5,y=7.5), 
+  		  aes(x, y), 
+  		  label= paste(genewanted,"\nP.Adj=",round(Pvalue_selectedGene,3)),
+  		  size = 6,
+  		  hjust = "outward")+
+	theme_dj(14)
+
+
+print(scatterplot_ca9)
+```
+
+## Association of CA9 expression with VHL status
+
+```{r test_association_vhl_CA9}
+
+sdrfScreenvhl <- filter(sdrfScreen, !is.na(VHL))
+
+# Define the desired probeset for CA9and grab the gene Symbol
+probesetwanted <- "768_at"
+genewanted <- as.character(probeset[probeset$Probeset == probesetwanted, 4])
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+onegene <- rmascreen %>% 
+	filter(rmascreen$Probeset == probesetwanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) 
+
+sdrfScreenvhl <- sdrfScreenvhl%>%
+left_join(select(onegene, 
+					 c("Assay.Name", "RMA")))
+
+
+sdrfScreenvhl$VHLstatus <- NA
+sdrfScreenvhl$VHLstatus <- if_else(sdrfScreenvhl$VHL == "WT",
+									 "VHLwt",
+									 "VHLmut")
+
+sdrfScreenvhl$VHLstatus <- factor(sdrfScreenvhl$VHLstatus, 
+								  levels = c("VHLwt",
+									 "VHLmut"))
+
+print(kruskal.test(RMA ~ VHLstatus, data = sdrfScreenvhl))
+
+```
+
+At .05 significance level, we conclude that the CA9 RMA values in the VHL-wt versus VHL-mutant patients are NOT identical populations.
+
+data:  RMA by VHLstatus
+Kruskal-Wallis chi-squared = 4.7253, df = 1, p-value = 0.02972
+
+
+## Scatterplot of PAK4 expression
+
+```{r scatterplot_gene_of_interest}
+
+# Define the desired probeset and grab the gene Symbol
+probesetwanted <- "2444_at"
+genewanted <- as.character(probeset[probeset$Probeset == probesetwanted, 4])
+
+#get the P value from the limma
+Pvalue_selectedGene <- results%>%
+	filter(Probeset == probesetwanted)%>%
+	pull(adj.P.Val)
+
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+onegene <- rmascreen %>% 
+	filter(rmascreen$Probeset == probesetwanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrfScreen, 
+					 c("Assay.Name", "Response20pct", 
+					   "individual", "clinical.history", "CD3sig.Score")))
+
+#count the samples
+plotcount <- nrow(onegene)
+
+scatterplot_gene_of_interest <- onegene %>%
+	ggplot(aes(x = CD3sig.Score, y = RMA))+
+	geom_point(aes(x = CD3sig.Score, y = RMA, 
+				   colour = Response20pct, shape = clinical.history),
+			   size = 3, position = position_jitter(0)) +
+		scale_colour_manual(name = 'Response',
+						values = color_response) +
+	scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+		 scale_y_continuous(breaks=seq(3,6,1),
+		 			   limits=c(2.25, 6.5))+
+	stat_smooth(method = "lm", se=TRUE, color="black", formula = y ~ x) +
+  labs(title = paste("CM9 Baseline Biopsy CD3TCR Score: ",probesetwanted, "=", genewanted),
+  	 	subtitle = paste("Samples with Affymetrix; N=",plotcount),
+  	 x = "CD3TCR Score",
+  	 		 y = "Expression signal, RMA") +
+		  geom_text(data=data.frame(x=0.5,y=6), 
+  		  aes(x, y), 
+  		  label= paste(genewanted,"\nP.Adj=",round(Pvalue_selectedGene,3)),
+  		  size = 6,
+  		  hjust = "outward")+
+	theme_dj(14)
+
+
+print(scatterplot_gene_of_interest)
+```
+
+## Heatmap of Elvidge HIF1A_DN and CCL28 against clinical annotation
+
+```{r heatmap_hypoxia_ccl28}
+
+# Define the desired probeset 
+probesetwanted <- "56477_at"
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+onegene <- rmascreen %>% 
+	filter(rmascreen$Probeset == probesetwanted) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrfScreen, 
+					 c("Assay.Name", "Response20pct", 
+					   "individual", "clinical.history", "CD3sig.Score")))
+
+
+# Add ccl28 RMA value to SDRF screen sample annotation
+sdrfScreen_ccl28 <- left_join(sdrfScreen, select(onegene, c("individual", "RMA")))
+sdrfScreen_ccl28 <- rename(sdrfScreen_ccl28, CCL28 = RMA)
+
+# Object of the 325 significantly neg-assoc probesets
+neg325 <- filter(results05,logFC < 0) %>%
+	pull(Probeset)
+
+# Subset rmascreen data to the 88 hif1a geneset 
+rma_hif1a <- rmascreen[rmascreen$Probeset %in% hif1a_probesets,]
+
+# Add the Gene Symbol to the hif1a expression data table 
+# so it can be used to label heatmap rows
+rma_hif1a2 <-  probeset %>%
+	select(Probeset,Symbol) %>%
+	inner_join(rma_hif1a)
+
+# Further subset to the 11 HIF1a probesets overlapping the CD3sig hits
+rma_hif1a3 <- filter(rma_hif1a2, Probeset %in% neg325)
+
+# scaled_mat will be the body of the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(select(rma_hif1a3, -Probeset, -Symbol))))
+rownames(scaled_mat) = rma_hif1a3$Symbol
+
+# Provide column order as Ascending CD3sig.Score
+# This works because scaled_mat columns are in same order as SDRF rows
+ordering = order(sdrfScreen$CD3sig.Score)
+
+# Top heatmap annotation is CD3sig.Score 
+ha_top = HeatmapAnnotation(CD3sig = sdrfScreen_ccl28$CD3sig.Score,
+						   col = list( CD3sig = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick"))),
+						   annotation_height = unit(c(.5), "cm"))
+
+#draw(ha_top,1:56)
+
+# Bottom heatmap annotation is response annotation, Prior Therapy, and Pt #
+# ADDED ccl28
+# dded PDL1
+
+ha_bottom = HeatmapAnnotation(ccl28 = anno_points(sdrfScreen_ccl28$CCL28, 
+												  axis = TRUE),
+							  response = sdrfScreen_ccl28$Response20pct,
+							  vegf = sdrfScreen_ccl28$clinical.history,
+							  biopsy = sdrfScreen_ccl28$BiopsySite,
+							  vhl = sdrfScreen_ccl28$VHL,
+						   pdl1 = sdrfScreen_ccl28$PDL1cat,
+							  colname = anno_text(sdrfScreen_ccl28$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 8)),
+							  col = list(vegf =
+							  		   	c("PriorTherapy_Yes"="black","PriorTherapy_No"="goldenrod2"),
+							  		   response = c("Not20pct" ="black", 
+							  		   			 "20pctDec"= "goldenrod2", 
+							  		   			 "NE" = "white"),
+							  		   biopsy = c("LymphNode"  = "goldenrod2",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black"),
+						   			pdl1 = c("0%" = "white", "1to5%" = "red","5+%" = "red"),
+						   			vhl = c("Missense_Mutation" = "goldenrod2",
+								  		  "Nonsense_Mutation" = "goldenrod2",
+                                            "Frame_Shift_Del" = "goldenrod2" ,
+								  		  "Frame_Shift_Ins" = "goldenrod2",
+								  		  "Splice_Site" = "goldenrod2",
+								  		  "WT" = "black")
+						   			),
+							  na_col = "grey",
+							  annotation_height = unit(c(3,.5,.5,.5,.5,.5, 2), "cm"))
+
+#draw(ha_bottom,1:56)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-1, 0, 1), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 km = 1,
+						 show_row_names = TRUE,
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CA209-009: 56Screen for HIF1Aset and CCL28",
+						 show_column_names = FALSE,
+						 width = unit(7, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(1, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(8, "cm"))
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Screen_CD3TCR_HIF1A_CCL28.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(4, 10, 4, 4), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("CD3sig", 
+					{grid.text("CD3Sig Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+decorate_annotation("pdl1", 
+					{grid.text("PDL1 category",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("vhl", 
+					{grid.text("VHL Status", unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 7))})
+
+
+decorate_annotation("ccl28", 
+					{grid.text("CCL28 RMA",
+							   unit(-10, "mm"), just = "bottom",
+							   rot = 90, check.overlap = T,
+							   gp = gpar(fontsize = 8))})					
+
+decorate_annotation("vegf", 
+					{grid.text("Prior VEGFi",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 8))})
+
+dev.off()
+
+```
+
+
+## Heatmap of Elvidge HIF1A_DN against clinical annotation
+
+```{r heatmap_hypoxia}
+
+# Object of the 325 significantly neg-assoc probesets
+neg325 <- filter(results05,logFC < 0) %>%
+	pull(Probeset)
+
+# Subset rmascreen data to the 88 hif1a geneset 
+rma_hif1a <- rmascreen[rmascreen$Probeset %in% hif1a_probesets,]
+
+# Add the Gene Symbol to the hif1a expression data table 
+# so it can be used to label heatmap rows
+rma_hif1a2 <-  probeset %>%
+	select(Probeset,Symbol) %>%
+	inner_join(rma_hif1a)
+
+# Further subset to the 11 HIF1a probesets overlapping the CD3sig hits
+rma_hif1a3 <- filter(rma_hif1a2, Probeset %in% neg325)
+
+# scaled_mat will be the body of the heatmap of expression values
+# Z-score the data
+scaled_mat = t(scale(t(select(rma_hif1a3, -Probeset, -Symbol))))
+rownames(scaled_mat) = rma_hif1a3$Symbol
+
+# Provide column order as Ascending CD3sig.Score
+# This works because scaled_mat columns are in same order as SDRF rows
+ordering = order(sdrfScreen$CD3sig.Score)
+
+# Top heatmap annotation is CD3sig.Score 
+ha_top = HeatmapAnnotation(CD3sig = sdrfScreen$CD3sig.Score,
+						   col = list( CD3sig = colorRamp2(c(-2, 0, 2), c("dodgerblue", "white", "firebrick"))),
+						   annotation_height = unit(c(.5), "cm"))
+
+#draw(ha_top,1:56)
+
+# Bottom heatmap annotation is response annotation, Prior Therapy, and Pt #
+# Added PDL1
+
+ha_bottom = HeatmapAnnotation(response = sdrfScreen$Response20pct,
+							  vegf = sdrfScreen$clinical.history,
+							  biopsy = sdrfScreen$BiopsySite,
+							  vhl = sdrfScreen$VHL,
+						   pdl1 = sdrfScreen$PDL1cat,
+							  colname = anno_text(sdrfScreen$individual, rot = -90, just = "left", offset = unit(1, "npc") - unit(2, "mm"), 
+							  					gp = gpar(fontsize = 6)),
+							  col = list(vegf =
+							  		   	c("PriorTherapy_Yes"="black","PriorTherapy_No"="goldenrod2"),
+							  		   response = c("Not20pct" ="black", 
+							  		   			 "20pctDec"= "goldenrod2", 
+							  		   			 "NE" = "white"),
+							  		   biopsy = c("LymphNode"  = "goldenrod2",
+							  		   		   "Adrenal" = "black","SoftTissue" = "black","Lung" = "black",
+							  		   		   "Kidney"="black","Liver" = "black","Pancreas" = "black"),
+						   			pdl1 = c("0%" = "white", "1to5%" = "red","5+%" = "red"),
+						   			vhl = c("Missense_Mutation" = "goldenrod2",
+								  		  "Nonsense_Mutation" = "goldenrod2",
+                                            "Frame_Shift_Del" = "goldenrod2" ,
+								  		  "Frame_Shift_Ins" = "goldenrod2",
+								  		  "Splice_Site" = "goldenrod2",
+								  		  "WT" = "black")
+						   			),
+							  na_col = "grey",
+							  annotation_height = unit(c(.35,.35,.35,.35,.35,2), "cm"))
+
+#draw(ha_bottom,1:56)
+
+heatmap_object = Heatmap(scaled_mat,
+						 col = colorRamp2(c(-1, 0, 1), c("dodgerblue", "white", "firebrick")), 
+						 cluster_rows = TRUE,
+						 km = 1,
+						 show_row_names = TRUE,
+						 row_names_gp = gpar(fontsize = 12),
+						 cluster_columns = FALSE,
+						 column_order = ordering,
+						 column_title = "CM9: 56Screen for HIF1Aset",
+						 show_column_names = FALSE,
+						 width = unit(10, "cm"),
+						 #height = unit(8, "cm"),
+						 top_annotation = ha_top,
+						 top_annotation_height = unit(1, "cm"), 
+						 bottom_annotation = ha_bottom,
+						 bottom_annotation_height = unit(3, "cm"))
+
+
+# Produce the heatmap and save to a file
+
+heatmap_file <- paste0(results_dir,"/","GEP_Heatmap_Biopsy_Screen_CD3TCR_HIF1A.pdf")
+pdf(file=heatmap_file)
+
+
+draw(heatmap_object, padding = unit(c(50, 80, 10,30), "mm"))
+
+# Decorate the heatmap object, adding layers of texts or lines
+decorate_annotation("CD3sig", 
+					{grid.text("CD3TCR Score",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+decorate_annotation("pdl1", 
+					{grid.text("PDL1 category",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("vhl", 
+					{grid.text("VHL Status", unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+
+
+decorate_annotation("vegf", 
+					{grid.text("PriorTherapy",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+decorate_annotation("response", 
+					{grid.text("Response",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+decorate_annotation("biopsy", 
+					{grid.text("Biopsy Site",
+							   unit(-2, "mm"), just = "right",
+							   gp = gpar(fontsize = 10))})
+
+dev.off()
+
+```
+
+## Wnt pathway genes
+
+```{r wnt_scatter}
+# Specify 5 wnt pathway probesets and PAK4
+wntgenes <- c("4038_at","4041_at","4040_at","7976_at","1454_at","10298_at" )
+
+
+# Get Gene values, then transpose to Array ID and RMA values in columns
+# Add Gene Symbol
+multigene <- rmascreen %>% 
+	filter(Probeset %in% wntgenes) %>%
+	gather(key = "Assay.Name", value = "RMA", -Probeset) %>%
+	left_join(select(sdrfScreen, 
+					 c("Assay.Name", "Response20pct", 
+					   "individual", "clinical.history", "CD3sig.Score"))) %>%
+	left_join(select(probeset, c("Probeset", "Symbol"))) %>%
+	left_join(select(results, c("Probeset", "adj.P.Val") ))
+
+# Make a P value annotation dataframe
+annotation <- multigene %>%
+	group_by(Symbol) %>%
+	summarize(CD3sig.Score = (max(CD3sig.Score)-0.5), RMA = max(RMA),
+			  adj.P.Val = max(adj.P.Val)) %>% 
+	mutate_at("adj.P.Val", round, 4)
+
+# count samples
+plotcount <- n_distinct(multigene$Assay.Name)
+
+# Plot genes
+scatterplots <- multigene %>%
+	ggplot(aes(x = CD3sig.Score, y = RMA))+
+	geom_point(aes(x = CD3sig.Score, y = RMA, 
+				   colour = Response20pct, shape = clinical.history),
+			   size = 2, position = position_jitter(0)) +
+			scale_colour_manual(name = 'Response',
+						values = color_response) +
+	scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+	stat_smooth(method = "lm", se=TRUE, color="black", formula = y ~ x) +
+  labs(title = paste("CA209-009: Wnt gene Expression v CD3TCRe Score"),
+  	 	subtitle = paste("Subjects with Baseline Biopsy, N=",plotcount),
+  	 	x = "CD3TCR Score",
+  	 	y = "Expression signal, RMA") +
+	facet_wrap(~Symbol, ncol = 2,scales = "free_y") +
+	geom_text(data = annotation, aes(label= paste("P.Adj=",adj.P.Val)),
+			    		  size = 4,
+  		  hjust = "inward")+
+	theme_dj(12)
+
+print(scatterplots)
+
+
+```
+
+
+
+## Outputs
+
+Save files for:
+
++ 1336 transcripts significantly associated with T cell content
++ Breakdown of IRIS annotation among 1336 Transcripts
++ 281 transcripts with IRIS annotation that have negative relationship with T cell content (any P value)
+
+```{r outputs}
+
+# Table of 1336 correlated genes
+# Count the hits and make an output filename
+countCD3sighits <- nrow(results)
+CD3sighits_file <- paste0(results_dir,"/",
+					"GEP_Table_BiopsyScreen_CD3sigEffect_",countCD3sighits,"prbs",".txt")
+
+# Write tsv file of 1336prbs, annotation and statistics 
+write_tsv(results, CD3sighits_file)
+
+# Write tsv file of IRIS counts for the 1336prbs
+CD3sigiris_file <- paste0(results_dir,"/",
+						"GEP_Table_BiopsyScreen_CD3sigEffect_IRISsummary",".txt")
+
+write_tsv(irisassociation, CD3sigiris_file)
+
+# Table of 281 negatively associated immune genes
+# Count the hits and make an output filename
+countnegIRIShits <- nrow(resultsnegIRIS)
+negIRIS_file <- paste0(results_dir,"/",
+						"GEP_Table_BiopsyScreen_CD3TCREffect_NegativeImmune_",countnegIRIShits,"prbs",".txt")
+
+# Write tsv file of 281prbs, annotation and statistics 
+write_tsv(resultsnegIRIS, negIRIS_file )
+
+
+# CCL28 scatterplot
+scatter_file_ccl28 <- paste(results_dir, "/GEP_Scatterplot_CD3TCRScore_Baseline_CCL28.png",
+					   sep="")
+
+ggsave(scatterplot_ccl28, file = scatter_file_ccl28, width=6.5, height=6,
+	   units = "in", dpi = 96)
+
+# ca9 scatterplot
+scatter_file_ca9 <- paste(results_dir, "/GEP_Scatterplot_CD3TCRScore_Baseline_CA9.png",
+					   sep="")
+
+ggsave(scatterplot_ca9, file = scatter_file_ca9, width=6.5, height=6,
+	   units = "in", dpi = 96)
+
+
+# Save scatter plot of wnt genes
+wnt_file <- paste0(results_dir, "/GEP_Scatterplot_CD3TCRScore_Baseline_WntGenes.png")
+
+ggsave(scatterplots, file = wnt_file, width=6, height=7,
+	   units = "in", dpi = 96)
+
+#Save limma fit as an rds object for gene set analysis
+# fit_file <-  paste(work_dir,
+# 				   "checkmate9_CD3TCRsig_baseline_limma.rds",
+# 						sep = "/")
+# 
+# write_rds(fit, fit_file)
+
+```
+
+
+
+
+

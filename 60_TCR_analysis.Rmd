@@ -1,0 +1,327 @@
+---
+title: "TCR clonality analyses"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the environment
+rm(list = ls())
+
+# Free up memory by forcing garbage collection
+invisible(gc())  
+
+# Manually set the seed to an arbitrary number for consistency in reports
+myseed <- 9
+```
+
+## Procedure
+```{r libraries, message=F, warning=F}
+options(stringsAsFactors = F)
+
+DOMINO_DATA_PATH = "./data/import/TCR/"
+data_dir <- "./data/import"
+MIN_PRODUCTIVE_TEMPLATES = 1000
+
+
+library(gdata)
+library(data.table)
+library(gridExtra)
+library(grid)
+library(RColorBrewer)
+library(reshape2)
+library(ggplot2)
+library(ggpubr)
+```
+
+```{r functions}
+
+# Leave this here because I'm lazy
+test.pvalue = function(x) tryCatch({
+  t.test(x)$p.value
+}, error = function(e) {
+  return(NA)
+})
+
+
+source("./code/ggplot_theme_dj_prm.R")
+#' Custom ggplot theme with bolded text for easier legibility
+```
+
+```{r coloring}
+ARM_palette = brewer.pal(n = 4, name = "Set1")
+names(ARM_palette) = c("Nivo 0.3 mg/kg",
+                       "Nivo 10 mg/kg-Naive",
+                       "Nivo 10 mg/kg",
+                       "Nivo 2 mg/kg")
+
+Response20pct_palette = c("Not20pct" = "black",
+                          "20pctDec" = "goldenrod2",
+                          "NE" = "darkgrey")
+
+# shape map for prior therapy
+shape_prior <- c("Pretreated" = 16, 
+              "Naive" = 18)
+
+
+# color map for response
+color_response <- c("Not20pct" = "black", 
+              "20pctDec" = "goldenrod2",
+					"NE" = "darkgrey")
+
+```
+
+
+```{r read_TCR_data}
+TCR_data = read.table(paste0(DOMINO_DATA_PATH, "sample_overview.tsv"),
+                      header = T, sep = "\t")
+TCR_manifest = read.xls(paste0(DOMINO_DATA_PATH, "ca209009.sample.info.guess_accessions.xlsx"),
+                      header = T, sheet = 2)
+TCR_tumor_info  = read.csv(paste0(DOMINO_DATA_PATH, "Assuragen_roster.csv"),
+                           header = T)
+```
+
+```{r format_TCR_data}
+# Extracting properly formatted USUBJIB
+TCR_manifest$USUBJID = paste(gsub("-","",TCR_manifest$Study.Code), 
+                             sapply(strsplit(TCR_manifest$Subject.Code," "), 
+                                    function(i) 
+                                      paste(sapply(i, as.numeric), collapse="-")), sep="-")
+
+common_samples = intersect(TCR_tumor_info$Barcode,TCR_manifest$Alternate.Sample.ID)
+TCR_tumor_info = TCR_tumor_info[TCR_tumor_info$Barcode %in% common_samples,]
+
+# Collapse the timepoint/visit info into a single column
+TCR_manifest$Timepoint[match(TCR_tumor_info$Barcode,TCR_manifest$Alternate.Sample.ID)] = TCR_tumor_info$Visit
+TCR_manifest$Timepoint = gsub("SCREENING", "C1D1_0H", TCR_manifest$Timepoint)
+
+# Format the Sample Type
+TCR_manifest$Sample.Type = gsub("DNA", "Tumor", TCR_manifest$Sample.Type)
+
+# Add the Biopsy info, as some tumor timepoints have been duplicated (multiple biopsies)
+# (i.e. C1D1_0H / BIOP 1)
+TCR_manifest$Biopsy = NA
+TCR_manifest$Biopsy[match(TCR_tumor_info$Barcode,TCR_manifest$Alternate.Sample.ID)] = TCR_tumor_info$Container.Name
+
+# Some tumor biopsy/timepoint have been duplicate. Would be interesting to assess robustness
+# (i.e. C1D1_0H / BIOP 1 & C1D1_0H / BIOP 1)
+TCR_manifest = TCR_manifest[!duplicated(TCR_manifest[,c("USUBJID","Sample.Type","Biopsy","Timepoint")]),]
+
+# Remove samples for which we do not have timepoint info
+TCR_manifest = TCR_manifest[TCR_manifest$Timepoint != "",]
+
+# Apply a consistent formatting to timepoint data
+TCR_manifest$Timepoint = gsub(" ","_",TCR_manifest$Timepoint)
+
+# Merge the manifest and summary TCR statistics
+TCR_data$Barcode = sapply(strsplit(TCR_data$sample_name, "-"), function(i) i[length(i)])
+TCR_complete = merge(TCR_data, TCR_manifest, by="Barcode")
+TCR_complete = TCR_complete[TCR_complete$productive_templates > MIN_PRODUCTIVE_TEMPLATES,]
+```
+
+```{r read_clinical_data}
+# Read the clinical data
+clinical = read.table(paste0(data_dir,"CM9_Patient_Annotation.txt"),
+                      header = T, sep = "\t")
+
+clinical$Response20pct = factor(clinical$Response20pct, levels = c("Not20pct","20pctDec"))
+clinical = clinical[!is.na(clinical$Response20pct),]
+# Establish the correct names/map for ARM
+
+```
+
+```{r merge}
+
+# Merge the clinical and TCR data
+sample_annotation = merge(TCR_complete, clinical, by = "USUBJID")
+
+# Cleanup
+rm(TCR_complete, TCR_data, TCR_manifest, TCR_tumor_info,
+   clinical, common_samples)
+```
+
+```{r annotation}
+sample_annotation = sample_annotation[sample_annotation$MatchedLesionBiopsy &
+                                        !is.na(sample_annotation$MatchedLesionBiopsy),]
+
+sample_annotation = sample_annotation[sample_annotation$Biopsy == "BIOP 1" |
+                                        is.na(sample_annotation$Biopsy),]
+```
+
+```{r reshape_data}
+TCR_data_summary = dcast(sample_annotation, USUBJID + ARM + Sample.Type + Biopsy + Response20pct + VEGFstatus +
+                           CD8PERCENT.BL + CD4PERCENT.BL + PD1PERCENT.BL + BOR
+                         ~ Timepoint, 
+                         value.var = c("productive_clonality"))
+```
+
+```{r baseline_clonality_response}
+pdf("../results/TCR_baseline_clonality_response.pdf")
+
+
+ggplot(TCR_data_summary, aes(y= C1D1_0H, x = Response20pct, color = Response20pct)) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+  geom_jitter(alpha= 0.5, width = 0.1) +
+  ylab("Baseline Clonality") +
+  scale_color_manual("Response", values = Response20pct_palette) +
+  facet_wrap(~ Sample.Type + VEGFstatus, nrow=2) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle("CA209-009 Baseline TCR Clonality By Response")
+
+
+
+dev.off()
+
+```
+
+## Baseline clonality response tumor ONLY
+
+```{r baseline_clonality_response_tumorONLY}
+
+## Petra for publication
+
+
+
+mycomparisons <- list(c("Not20pct","20pctDec"))
+
+nona <- TCR_data_summary%>%
+	filter(!is.na(C1D1_0H),
+		   Sample.Type == "Tumor")
+
+plotcount = length(unique(nona$USUBJID))
+
+plot_Baseline_Clonality <- ggplot(nona, aes(y= C1D1_0H, x = Response20pct)) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+	geom_point(aes(colour = Response20pct, shape = VEGFstatus),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=.5, jitter.width = 0.2)) +
+	scale_colour_manual(name = 'Response',
+						values = color_response) +
+		scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+	labs(title = "CA209-009 Baseline TCR Clonality By Response",
+		 subtitle = paste("Patients with Biopsy data, N=",plotcount),
+		 x = "Response Category",
+		 y = "Baseline Clonality") +
+		scale_x_discrete(labels=c("Not20pct" = "NonResponder\nN = 43", 
+							  "20pctDec" = "Responder\nN = 11"))+
+	stat_compare_means(method="t.test", size = 8,
+					   aes(label = paste0("P = ", ..p.format..)),
+					   comparisons = mycomparisons,
+					   label.y = 0.5)+
+			theme_dj(16)
+
+plot_Baseline_Clonality
+
+boxbaseline_file <- "./results/TCR_baseline_clonality_response.png"
+
+ggsave(plot_Baseline_Clonality, file = boxbaseline_file, width=6, height=7,
+	   units = "in", dpi = 96)
+
+
+```
+
+Nonresponder =  `r sum(nona$Response20pct == "Not20pct")`
+Responder =  `r sum(nona$Response20pct == "20pctDec")`
+
+File = `r boxbaseline_file`
+
+
+```{r delta_clonality_pre_post_response}
+paired_t_test_p = aggregate(list(p.value = TCR_data_summary$C2D8_168HR - TCR_data_summary$C1D1_0H), 
+                            by = list(Response20pct = TCR_data_summary$Response20pct,  Sample.Type = TCR_data_summary$Sample.Type), FUN =  test.pvalue)
+
+pdf("../results/TCR_delta_clonality_response.pdf")
+ggplot(TCR_data_summary, aes(y= C2D8_168HR - C1D1_0H, x = Response20pct, color = Response20pct)) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+  geom_jitter(alpha= 0.5, width = 0.1) +
+  facet_grid(~ Sample.Type) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), 
+        plot.title = element_text(hjust = 0.5)) +
+  scale_color_manual("Response", values = Response20pct_palette) +
+  ylab(expression(paste(Delta, "Clonality (Post - Pre)"))) +
+  geom_text(data = paired_t_test_p, size=4,
+            aes(y = 1.1*min(TCR_data_summary$C2D8_168HR - TCR_data_summary$C1D1_0H, na.rm=T) ,
+                label=paste0("p=",round(p.value,2)))) +
+  ggtitle("CA209-009 Pre vs Post TCR Clonality By Response")
+dev.off()
+```
+
+## Delta clonality response tumor ONLY
+
+```{r delta_clonality_pre_post_response_petra}
+
+paired_t_test_p = aggregate(list(p.value = TCR_data_summary$C2D8_168HR - TCR_data_summary$C1D1_0H),
+                            by = list(Response20pct = TCR_data_summary$Response20pct, 
+                            		  Sample.Type = TCR_data_summary$Sample.Type), 
+							FUN =  test.pvalue)%>%
+	filter(Sample.Type == "Tumor")
+
+
+
+## Petra for publication
+
+paired <- TCR_data_summary%>%
+	filter(!is.na(C1D1_0H),
+		   Sample.Type == "Tumor")%>%
+	mutate(Day28_Change =C2D8_168HR - C1D1_0H)%>%
+	filter(!is.na(Day28_Change))
+
+plotcount = length(unique(paired$USUBJID))
+
+plot_change_Clonality <- ggplot(paired, aes(y= Day28_Change, x = Response20pct)) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+	geom_point(aes(colour = Response20pct, shape = VEGFstatus),
+			   size = 3, 
+			   position=position_jitterdodge(dodge.width=.5, jitter.width = 0.2)) +
+	scale_colour_manual(name = 'Response',
+						values = color_response) +
+		scale_shape_manual(name = 'Prior Therapy',
+						values = shape_prior) +
+	labs(title = "CA209-009 Day 28 change in TCR Clonality By Response",
+		 subtitle = paste("Patients with Biopsy data, N=",plotcount),
+		 x = "Response Category",
+		 y = "Day 28 Change in Clonality") +
+		scale_x_discrete(labels=c("Not20pct" = "NonResponder\nN = 40", 
+							  "20pctDec" = "Responder\nN = 11"))+
+			theme_dj(16)+
+	  geom_text(data = paired_t_test_p, size=8,
+            aes(y = 1.1*max(paired$Day28_Change, na.rm=T) ,
+                label=paste0("P=",round(p.value,2)))) 
+
+
+plot_change_Clonality
+
+box_change_file <- "./results/TCR_Change_clonality_response.png"
+
+ggsave(plot_change_Clonality, file = box_change_file, width=6, height=7,
+	   units = "in", dpi = 96)
+
+
+```
+
+Nonresponder =  `r sum(paired$Response20pct == "Not20pct")`
+Responder =  `r sum(paired$Response20pct == "20pctDec")`
+
+File = `r boxbaseline_file`
+
+
+```{r spaghetti_clonality_pre_post_response}
+
+pdf("../results/TCR_spaghetti_clonality_response.pdf")
+ggplot(subset(sample_annotation, Sample.Type == "Tumor" & Timepoint != "UNSC/ETERM"), 
+       aes(x = Timepoint, y = productive_clonality, group = USUBJID, color = Response20pct)) +
+  geom_line() +
+  scale_color_manual("Response", values = Response20pct_palette) +
+  scale_x_discrete(name ="Timepoint", 
+                   labels=c("C1D1_0H" = "Pre-Treatment",
+                           "C2D8_168HR" = "On-Treatment (C2D8)"))
+dev.off()
+```
+
