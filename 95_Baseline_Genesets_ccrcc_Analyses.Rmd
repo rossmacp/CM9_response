@@ -81,7 +81,7 @@ source("./code/ggplot_theme_dj_prm.R")
 #Don Jackson
 
 
-## Functions by Peter Szabo
+## contrastTable Functions by Scott Chasalow
 
 contrastTable <- function(object, ...)
   UseMethod("contrastTable")
@@ -162,42 +162,17 @@ contrastTable.coxph <- function(object, linmat, level = 0.95, df = 1, rnames =
 
 
 
-
 contrastTable.glm <- function(object, linmat, level = 0.95, df = 1, rnames =
                                 dimnames(linmat)[[1]]) {
   #
   # DESCRIPTION:
-  #    Computes point estimates and confidence intervals, and Wald
-  #    test statistics and p-values, for specified contrasts (or
-  #    more generally, linear combinations) of coefficients from a
-  #    fitted Cox model (coxph object). Typically these contrasts
-  #    will represent some sort of hazard ratio (HR).
-  #
-  #    This is a method for the generic function contrastTable for
-  #    objects inheriting from class "coxph".
-  #
-  # ARGUMENTS:
-  # object  a coxph object
-  # linmat  numeric matrix with one row per contrast and one column
-  #    corresponding to each coefficient in object.
-  # level  desired confidence level. Default is 0.95, giving 95%
-  #    confidence intervals for the contrasts.
-  # df  a vector of positive integers, giving the degrees of
-  #    freedom for the chi-squared distribution used for computing
-  #    the Wald test p-values. The default is 1. Must have length
-  #    one, in which case that value is used for all tests, or
-  #    length nrow(linmat). If you're unsure what value to use for
-  #    a particular contrast, consult a statistician. If you ARE a
-  #    statistician, consult a different statistician. Has no
-  #    influence on HR point and interval estimates.
-  # rnames  character vector giving names of the requested
-  #    contrasts, used as rownames in the return value. Default is
-  #    row names of linmat.
-  #
-  # VALUE:
-  #    a numeric matrix with one row per contrast, and columns
-  #    "HR", "logHR", "SE.logHR", "lo.logHR", "up.logHR", "level",
-  #    "WaldStat", and "Pvalue".
+#PRM: 
+#don't have a description for this
+#As far as I can figure, this produces Odds ratios, not Hazard ratios
+#Because the GLM is for a binary outcome (Response)
+#Down in the chunk applying this function we ask for the OR for the difference (DIFF of Score) between the 25th percentile score and the 75th percentile score
+
+
   #
   ###
   # Argument checking
@@ -896,12 +871,15 @@ ccrcc4_Pvalue <- summary(or)$coefficients["ccrcc4_binaryccrcc4",4]
 
 
 
-## Odds ratio for Signature scores
+## Odds ratio for Signature scores 
 
-This calculates the Odds Ratio for each Signature score (continuous) against Overall Response (as a binary metric). 
+This calculates the Odds Ratio for each Signature score  (for the 75th vs 25th Percentile from continuous Score) against Overall Response (as a binary metric). 
 
 glm(OR_num ~ score)
 
+Delta Score = 75th-25th percentile of Score
+
+And use the glm and the delta score in contrastTable:: function to calculate the Odds Ratio.
 
 ```{r contrasts_signatures}
 
@@ -940,8 +918,10 @@ df_forestPl <- rbind(df_forestPl, ctrtbl)
 
 ## Odds ratio Table
 
+Add the PBRM1 and ccrcc results to the Signature score results.
+
 ```{r forest_add_ccrcc}
-#Add ccrcc annotation
+#Add pbrm1 annotation
 df_forestPl[nrow(df_forestPl)+1,] <- c(pbrm_OR,
 									   pbrm_logOR,
 									   pbrm_SE.logOR,
