@@ -1,11 +1,11 @@
-#Release of this code has been Approved by BMS: *PubD - 00053752*
+Release of this code has been Approved by BMS: *PubD - 00053752*
 
-#This document describes the relationship of code to figures:
+This document describes the relationship of code to figures:
 
-#CM009 Manuscript Code outputs.txt
+CM009 Manuscript Code outputs.txt
 
-#Release of the underlying data is pending BMS approval.
+Release of the underlying data is pending BMS approval.
 
-#Data will be added to this repo ASAP!
+Data will be added to this repo ASAP!
 
-#Gene expression data and annotation are available in Array Express as EMTAB-3218.
+Gene expression data and annotation are available in Array Express as EMTAB-3218.
