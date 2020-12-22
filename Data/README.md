@@ -1,8 +1,8 @@
 
 # Files needed to run scripts 20 - 96
 
-#Patient Annotation
-#Anonymized
+**#Patient Annotation
+#Anonymized**
 
 clinicalData_file <- paste(data_dir, "CM9_Patient_Annotation.txt", sep = "/" )
 
