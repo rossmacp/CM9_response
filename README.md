@@ -6,8 +6,6 @@ This document describes the relationship of code to figures:
 
 CM009 Manuscript Code outputs.txt
 
-Release of the underlying data is pending BMS approval.
-
-Data will be added to this repo ASAP!
+Release of some underlying data is pending BMS approval and will be added to this repo ASAP!
 
 Gene expression data and annotation are available in Array Express as EMTAB-3218.
