@@ -11,21 +11,21 @@ clinicalData <- read_tsv(clinicalData_file)
 #SDRF (Sample and Data Relationship Format) file from Array Express
 
 sdrf_file <- paste(data_dir, "E-MTAB-3218 sdrf_response.txt", sep = "/")
-
 sdrf <- read_tsv(sdrf_file)
 
 #Affymetrix probeset to Gene annotation
 
 #Custom annotation by Charles Tilford and Petra Ross-Macdonald
 
-probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
 
+probeset_file <- paste(data_dir, "U219_BrainArray_Locus_Symbol_IRIS.txt", sep = "/")
 probeset <- read_tsv(probeset_file)
+
 
 #RMA Expression values, also available in E-MTAB-3218
 
-rma_file <- paste(data_dir, "CA209009-tumorAffy-HGU219_HS_ENTREZG.rma", sep = "/")
 
+rma_file <- paste(data_dir, "CA209009-tumorAffy-HGU219_HS_ENTREZG.rma", sep = "/")
 rma <- read_tsv(rma_file)
 
 **Pending release approval by BMS**
