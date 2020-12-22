@@ -4,7 +4,7 @@ Release of this code has been Approved by BMS: *PubD - 00053752*
 
 This document describes the relationship of code to figures:
 
-CM009 Manuscript Code outputs.txt
+**CM009 Manuscript Code outputs.txt**
 
 Release of some underlying data is pending BMS approval and will be added to this repo ASAP!
 
