@@ -2,7 +2,7 @@
 # Files needed to run scripts 20 - 96
 
 
-**E-MTAB-3218 sdrf_response.txt** #SDRF (Sample and Data Relationship Format) file from Array Express
+**E-MTAB-3218 sdrf_response.txt** #Sample and Data Relationship Format, also available in E-MTAB-3218
 
 **CA209009-tumorAffy-HGU219_HS_ENTREZG.rma**  #RMA Expression values, also available in E-MTAB-3218
 
