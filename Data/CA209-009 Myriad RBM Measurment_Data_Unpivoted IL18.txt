@@ -1,0 +1,597 @@
+BIOSTORE:STUDY_TIMEPOINT	Study	Worksheet Name	Subject ID	Sample ID	Parameter	Variable	Original Result	Units	Result Qualifier	Result Numeric	Myriad RBM Serum High Range	Myriad RBM Serum Low Range
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	1	2.38E+13	Interleukin-18 (IL-18)	IL_18	199	pg/mL		199	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	11	2.38E+13	Interleukin-18 (IL-18)	IL_18	400	pg/mL		400	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	8	2.38E+13	Interleukin-18 (IL-18)	IL_18	308	pg/mL		308	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	69	3.38E+13	Interleukin-18 (IL-18)	IL_18	142	pg/mL		142	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	80	3.38E+13	Interleukin-18 (IL-18)	IL_18	159	pg/mL		159	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	62	2.38E+13	Interleukin-18 (IL-18)	IL_18	158	pg/mL		158	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	59	3.38E+13	Interleukin-18 (IL-18)	IL_18	128	pg/mL		128	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	59	3.38E+13	Interleukin-18 (IL-18)	IL_18	92	pg/mL		92	538	86
+FOLLUP1	CA209-009	Human InflammationMAP® 1.0	64	2.38E+13	Interleukin-18 (IL-18)	IL_18	244	pg/mL		244	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	86	2.38E+13	Interleukin-18 (IL-18)	IL_18	1160	pg/mL		1160	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	69	3.38E+13	Interleukin-18 (IL-18)	IL_18	249	pg/mL		249	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	80	3.38E+13	Interleukin-18 (IL-18)	IL_18	170	pg/mL		170	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	34	2.38E+13	Interleukin-18 (IL-18)	IL_18	232	pg/mL		232	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	87	3.38E+13	Interleukin-18 (IL-18)	IL_18	315	pg/mL		315	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	117	2.38E+13	Interleukin-18 (IL-18)	IL_18	237	pg/mL		237	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	117	2.38E+13	Interleukin-18 (IL-18)	IL_18	274	pg/mL		274	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	45	2.38E+13	Interleukin-18 (IL-18)	IL_18	342	pg/mL		342	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	2	2.38E+13	Interleukin-18 (IL-18)	IL_18	187	pg/mL		187	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	5	2.38E+13	Interleukin-18 (IL-18)	IL_18	168	pg/mL		168	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	59	3.38E+13	Interleukin-18 (IL-18)	IL_18	114	pg/mL		114	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	69	3.38E+13	Interleukin-18 (IL-18)	IL_18	156	pg/mL		156	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	59	3.38E+13	Interleukin-18 (IL-18)	IL_18	130	pg/mL		130	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	42	2.38E+13	Interleukin-18 (IL-18)	IL_18	368	pg/mL		368	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	10	2.38E+13	Interleukin-18 (IL-18)	IL_18	484	pg/mL		484	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	117	2.38E+13	Interleukin-18 (IL-18)	IL_18	332	pg/mL		332	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	84	2.38E+13	Interleukin-18 (IL-18)	IL_18	240	pg/mL		240	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	86	2.38E+13	Interleukin-18 (IL-18)	IL_18	918	pg/mL		918	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	80	3.38E+13	Interleukin-18 (IL-18)	IL_18	244	pg/mL		244	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	27	2.38E+13	Interleukin-18 (IL-18)	IL_18	330	pg/mL		330	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	98	3.38E+13	Interleukin-18 (IL-18)	IL_18	590	pg/mL		590	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	80	3.38E+13	Interleukin-18 (IL-18)	IL_18	152	pg/mL		152	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	105	2.38E+13	Interleukin-18 (IL-18)	IL_18	223	pg/mL		223	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	52	2.38E+13	Interleukin-18 (IL-18)	IL_18	474	pg/mL		474	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	2	2.38E+13	Interleukin-18 (IL-18)	IL_18	233	pg/mL		233	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	10	2.38E+13	Interleukin-18 (IL-18)	IL_18	386	pg/mL		386	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	5	2.38E+13	Interleukin-18 (IL-18)	IL_18	169	pg/mL		169	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	69	3.38E+13	Interleukin-18 (IL-18)	IL_18	230	pg/mL		230	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	42	2.38E+13	Interleukin-18 (IL-18)	IL_18	288	pg/mL		288	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	59	3.38E+13	Interleukin-18 (IL-18)	IL_18	152	pg/mL		152	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	59	3.38E+13	Interleukin-18 (IL-18)	IL_18	119	pg/mL		119	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	102	2.38E+13	Interleukin-18 (IL-18)	IL_18	276	pg/mL		276	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	118	2.38E+13	Interleukin-18 (IL-18)	IL_18	380	pg/mL		380	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	80	3.38E+13	Interleukin-18 (IL-18)	IL_18	235	pg/mL		235	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	27	2.38E+13	Interleukin-18 (IL-18)	IL_18	266	pg/mL		266	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	107	3.38E+13	Interleukin-18 (IL-18)	IL_18	158	pg/mL		158	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	114	2.38E+13	Interleukin-18 (IL-18)	IL_18	173	pg/mL		173	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	80	3.38E+13	Interleukin-18 (IL-18)	IL_18	142	pg/mL		142	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	119	2.38E+13	Interleukin-18 (IL-18)	IL_18	232	pg/mL		232	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	97	2.38E+13	Interleukin-18 (IL-18)	IL_18	185	pg/mL		185	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	1	2.38E+13	Interleukin-18 (IL-18)	IL_18	193	pg/mL		193	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	118	2.38E+13	Interleukin-18 (IL-18)	IL_18	393	pg/mL		393	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	8	2.38E+13	Interleukin-18 (IL-18)	IL_18	302	pg/mL		302	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	69	3.38E+13	Interleukin-18 (IL-18)	IL_18	144	pg/mL		144	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	48	2.38E+13	Interleukin-18 (IL-18)	IL_18	335	pg/mL		335	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	69	3.38E+13	Interleukin-18 (IL-18)	IL_18	234	pg/mL		234	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	25	2.38E+13	Interleukin-18 (IL-18)	IL_18	327	pg/mL		327	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	59	3.38E+13	Interleukin-18 (IL-18)	IL_18	109	pg/mL		109	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	102	2.38E+13	Interleukin-18 (IL-18)	IL_18	328	pg/mL		328	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	89	3.38E+13	Interleukin-18 (IL-18)	IL_18	402	pg/mL		402	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	27	2.38E+13	Interleukin-18 (IL-18)	IL_18	290	pg/mL		290	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	114	2.38E+13	Interleukin-18 (IL-18)	IL_18	253	pg/mL		253	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	80	3.38E+13	Interleukin-18 (IL-18)	IL_18	203	pg/mL		203	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	115	2.38E+13	Interleukin-18 (IL-18)	IL_18	149	pg/mL		149	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	2	2.38E+13	Interleukin-18 (IL-18)	IL_18	193	pg/mL		193	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	17	2.38E+13	Interleukin-18 (IL-18)	IL_18	155	pg/mL		155	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	87	3.38E+13	Interleukin-18 (IL-18)	IL_18	575	pg/mL		575	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	58	2.38E+13	Interleukin-18 (IL-18)	IL_18	161	pg/mL		161	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	87	3.38E+13	Interleukin-18 (IL-18)	IL_18	419	pg/mL		419	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	11	2.38E+13	Interleukin-18 (IL-18)	IL_18	416	pg/mL		416	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	114	2.38E+13	Interleukin-18 (IL-18)	IL_18	261	pg/mL		261	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	102	2.38E+13	Interleukin-18 (IL-18)	IL_18	280	pg/mL		280	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	118	2.38E+13	Interleukin-18 (IL-18)	IL_18	371	pg/mL		371	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	98	3.38E+13	Interleukin-18 (IL-18)	IL_18	562	pg/mL		562	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	34	2.38E+13	Interleukin-18 (IL-18)	IL_18	266	pg/mL		266	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	1	2.38E+13	Interleukin-18 (IL-18)	IL_18	200	pg/mL		200	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	58	2.38E+13	Interleukin-18 (IL-18)	IL_18	259	pg/mL		259	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	87	3.38E+13	Interleukin-18 (IL-18)	IL_18	485	pg/mL		485	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	102	2.38E+13	Interleukin-18 (IL-18)	IL_18	310	pg/mL		310	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	13	2.38E+13	Interleukin-18 (IL-18)	IL_18	291	pg/mL		291	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	87	3.38E+13	Interleukin-18 (IL-18)	IL_18	407	pg/mL		407	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	3	2.38E+13	Interleukin-18 (IL-18)	IL_18	134	pg/mL		134	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	118	2.38E+13	Interleukin-18 (IL-18)	IL_18	398	pg/mL		398	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	98	3.38E+13	Interleukin-18 (IL-18)	IL_18	502	pg/mL		502	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	34	2.38E+13	Interleukin-18 (IL-18)	IL_18	247	pg/mL		247	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	114	2.38E+13	Interleukin-18 (IL-18)	IL_18	182	pg/mL		182	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	8	2.38E+13	Interleukin-18 (IL-18)	IL_18	347	pg/mL		347	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	25	2.38E+13	Interleukin-18 (IL-18)	IL_18	336	pg/mL		336	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	4	2.38E+13	Interleukin-18 (IL-18)	IL_18	184	pg/mL		184	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	58	2.38E+13	Interleukin-18 (IL-18)	IL_18	451	pg/mL		451	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	89	3.38E+13	Interleukin-18 (IL-18)	IL_18	354	pg/mL		354	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	87	3.38E+13	Interleukin-18 (IL-18)	IL_18	422	pg/mL		422	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	102	2.38E+13	Interleukin-18 (IL-18)	IL_18	341	pg/mL		341	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	100	2.38E+13	Interleukin-18 (IL-18)	IL_18	195	pg/mL		195	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	94	3.38E+13	Interleukin-18 (IL-18)	IL_18	240	pg/mL		240	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	27	2.38E+13	Interleukin-18 (IL-18)	IL_18	275	pg/mL		275	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	117	2.38E+13	Interleukin-18 (IL-18)	IL_18	320	pg/mL		320	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	5	2.38E+13	Interleukin-18 (IL-18)	IL_18	170	pg/mL		170	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	13	2.38E+13	Interleukin-18 (IL-18)	IL_18	242	pg/mL		242	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	3	2.38E+13	Interleukin-18 (IL-18)	IL_18	119	pg/mL		119	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	64	2.38E+13	Interleukin-18 (IL-18)	IL_18	122	pg/mL		122	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	89	3.38E+13	Interleukin-18 (IL-18)	IL_18	453	pg/mL		453	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	87	3.38E+13	Interleukin-18 (IL-18)	IL_18	402	pg/mL		402	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	102	2.38E+13	Interleukin-18 (IL-18)	IL_18	357	pg/mL		357	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	100	2.38E+13	Interleukin-18 (IL-18)	IL_18	163	pg/mL		163	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	45	2.38E+13	Interleukin-18 (IL-18)	IL_18	375	pg/mL		375	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	117	2.38E+13	Interleukin-18 (IL-18)	IL_18	303	pg/mL		303	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	6	2.38E+13	Interleukin-18 (IL-18)	IL_18	177	pg/mL		177	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	14	2.38E+13	Interleukin-18 (IL-18)	IL_18	146	pg/mL		146	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	3	2.38E+13	Interleukin-18 (IL-18)	IL_18	123	pg/mL		123	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	64	2.38E+13	Interleukin-18 (IL-18)	IL_18	114	pg/mL		114	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	89	3.38E+13	Interleukin-18 (IL-18)	IL_18	398	pg/mL		398	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	89	3.38E+13	Interleukin-18 (IL-18)	IL_18	407	pg/mL		407	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	56	2.38E+13	Interleukin-18 (IL-18)	IL_18	253	pg/mL		253	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	30	2.38E+13	Interleukin-18 (IL-18)	IL_18	190	pg/mL		190	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	100	2.38E+13	Interleukin-18 (IL-18)	IL_18	172	pg/mL		172	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	117	2.38E+13	Interleukin-18 (IL-18)	IL_18	272	pg/mL		272	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	3	2.38E+13	Interleukin-18 (IL-18)	IL_18	136	pg/mL		136	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	20	2.38E+13	Interleukin-18 (IL-18)	IL_18	191	pg/mL		191	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	64	2.38E+13	Interleukin-18 (IL-18)	IL_18	237	pg/mL		237	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	89	3.38E+13	Interleukin-18 (IL-18)	IL_18	427	pg/mL		427	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	13	2.38E+13	Interleukin-18 (IL-18)	IL_18	228	pg/mL		228	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	89	3.38E+13	Interleukin-18 (IL-18)	IL_18	397	pg/mL		397	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	56	2.38E+13	Interleukin-18 (IL-18)	IL_18	231	pg/mL		231	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	47	2.38E+13	Interleukin-18 (IL-18)	IL_18	354	pg/mL		354	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	100	2.38E+13	Interleukin-18 (IL-18)	IL_18	163	pg/mL		163	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	4	2.38E+13	Interleukin-18 (IL-18)	IL_18	197	pg/mL		197	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	43	2.38E+13	Interleukin-18 (IL-18)	IL_18	187	pg/mL		187	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	107	3.38E+13	Interleukin-18 (IL-18)	IL_18	164	pg/mL		164	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	64	2.38E+13	Interleukin-18 (IL-18)	IL_18	125	pg/mL		125	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	10	2.38E+13	Interleukin-18 (IL-18)	IL_18	364	pg/mL		364	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	98	3.38E+13	Interleukin-18 (IL-18)	IL_18	652	pg/mL		652	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	56	2.38E+13	Interleukin-18 (IL-18)	IL_18	393	pg/mL		393	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	52	2.38E+13	Interleukin-18 (IL-18)	IL_18	394	pg/mL		394	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	114	2.38E+13	Interleukin-18 (IL-18)	IL_18	208	pg/mL		208	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	43	2.38E+13	Interleukin-18 (IL-18)	IL_18	173	pg/mL		173	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	107	3.38E+13	Interleukin-18 (IL-18)	IL_18	162	pg/mL		162	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	64	2.38E+13	Interleukin-18 (IL-18)	IL_18	131	pg/mL		131	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	98	3.38E+13	Interleukin-18 (IL-18)	IL_18	748	pg/mL		748	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	11	2.38E+13	Interleukin-18 (IL-18)	IL_18	393	pg/mL		393	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	56	2.38E+13	Interleukin-18 (IL-18)	IL_18	307	pg/mL		307	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	4	2.38E+13	Interleukin-18 (IL-18)	IL_18	201	pg/mL		201	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	117	2.38E+13	Interleukin-18 (IL-18)	IL_18	306	pg/mL		306	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	45	2.38E+13	Interleukin-18 (IL-18)	IL_18	386	pg/mL		386	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	56	2.38E+13	Interleukin-18 (IL-18)	IL_18	229	pg/mL		229	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	43	2.38E+13	Interleukin-18 (IL-18)	IL_18	192	pg/mL		192	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	64	2.38E+13	Interleukin-18 (IL-18)	IL_18	120	pg/mL		120	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	107	3.38E+13	Interleukin-18 (IL-18)	IL_18	177	pg/mL		177	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	8	2.38E+13	Interleukin-18 (IL-18)	IL_18	543	pg/mL		543	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	98	3.38E+13	Interleukin-18 (IL-18)	IL_18	573	pg/mL		573	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	6	2.38E+13	Interleukin-18 (IL-18)	IL_18	199	pg/mL		199	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	114	2.38E+13	Interleukin-18 (IL-18)	IL_18	208	pg/mL		208	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	52	2.38E+13	Interleukin-18 (IL-18)	IL_18	457	pg/mL		457	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	84	2.38E+13	Interleukin-18 (IL-18)	IL_18	153	pg/mL		153	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	107	3.38E+13	Interleukin-18 (IL-18)	IL_18	140	pg/mL		140	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	48	2.38E+13	Interleukin-18 (IL-18)	IL_18	388	pg/mL		388	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	10	2.38E+13	Interleukin-18 (IL-18)	IL_18	443	pg/mL		443	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	17	2.38E+13	Interleukin-18 (IL-18)	IL_18	182	pg/mL		182	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	98	3.38E+13	Interleukin-18 (IL-18)	IL_18	641	pg/mL		641	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	56	2.38E+13	Interleukin-18 (IL-18)	IL_18	231	pg/mL		231	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	34	2.38E+13	Interleukin-18 (IL-18)	IL_18	273	pg/mL		273	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	114	2.38E+13	Interleukin-18 (IL-18)	IL_18	237	pg/mL		237	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	1	2.38E+13	Interleukin-18 (IL-18)	IL_18	199	pg/mL		199	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	48	2.38E+13	Interleukin-18 (IL-18)	IL_18	357	pg/mL		357	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	84	2.38E+13	Interleukin-18 (IL-18)	IL_18	135	pg/mL		135	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	75	3.38E+13	Interleukin-18 (IL-18)	IL_18	128	pg/mL		128	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	11	2.38E+13	Interleukin-18 (IL-18)	IL_18	418	pg/mL		418	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	107	3.38E+13	Interleukin-18 (IL-18)	IL_18	172	pg/mL		172	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	57	2.38E+13	Interleukin-18 (IL-18)	IL_18	371	pg/mL		371	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	118	2.38E+13	Interleukin-18 (IL-18)	IL_18	389	pg/mL		389	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	47	2.38E+13	Interleukin-18 (IL-18)	IL_18	431	pg/mL		431	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	2	2.38E+13	Interleukin-18 (IL-18)	IL_18	284	pg/mL		284	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	22	2.38E+13	Interleukin-18 (IL-18)	IL_18	165	pg/mL		165	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	84	2.38E+13	Interleukin-18 (IL-18)	IL_18	120	pg/mL		120	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	75	3.38E+13	Interleukin-18 (IL-18)	IL_18	104	pg/mL		104	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	5	2.38E+13	Interleukin-18 (IL-18)	IL_18	215	pg/mL		215	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	107	3.38E+13	Interleukin-18 (IL-18)	IL_18	187	pg/mL		187	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	57	2.38E+13	Interleukin-18 (IL-18)	IL_18	330	pg/mL		330	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	30	2.38E+13	Interleukin-18 (IL-18)	IL_18	258	pg/mL		258	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	118	2.38E+13	Interleukin-18 (IL-18)	IL_18	353	pg/mL		353	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	17	2.38E+13	Interleukin-18 (IL-18)	IL_18	173	pg/mL		173	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	18	2.38E+13	Interleukin-18 (IL-18)	IL_18	89	pg/mL		89	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	84	2.38E+13	Interleukin-18 (IL-18)	IL_18	189	pg/mL		189	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	75	3.38E+13	Interleukin-18 (IL-18)	IL_18	109	pg/mL		109	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	13	2.38E+13	Interleukin-18 (IL-18)	IL_18	215	pg/mL		215	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	75	3.38E+13	Interleukin-18 (IL-18)	IL_18	316	pg/mL		316	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	57	2.38E+13	Interleukin-18 (IL-18)	IL_18	393	pg/mL		393	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	30	2.38E+13	Interleukin-18 (IL-18)	IL_18	213	pg/mL		213	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	118	2.38E+13	Interleukin-18 (IL-18)	IL_18	342	pg/mL		342	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	6	2.38E+13	Interleukin-18 (IL-18)	IL_18	183	pg/mL		183	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	6	2.38E+13	Interleukin-18 (IL-18)	IL_18	205	pg/mL		205	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	75	3.38E+13	Interleukin-18 (IL-18)	IL_18	123	pg/mL		123	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	84	2.38E+13	Interleukin-18 (IL-18)	IL_18	139	pg/mL		139	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	13	2.38E+13	Interleukin-18 (IL-18)	IL_18	233	pg/mL		233	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	75	3.38E+13	Interleukin-18 (IL-18)	IL_18	236	pg/mL		236	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	57	2.38E+13	Interleukin-18 (IL-18)	IL_18	343	pg/mL		343	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	27	2.38E+13	Interleukin-18 (IL-18)	IL_18	324	pg/mL		324	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	66	2.38E+13	Interleukin-18 (IL-18)	IL_18	115	pg/mL		115	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	17	2.38E+13	Interleukin-18 (IL-18)	IL_18	159	pg/mL		159	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	57	2.38E+13	Interleukin-18 (IL-18)	IL_18	407	pg/mL		407	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	26	2.38E+13	Interleukin-18 (IL-18)	IL_18	404	pg/mL		404	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	76	3.38E+13	Interleukin-18 (IL-18)	IL_18	246	pg/mL		246	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	85	2.38E+13	Interleukin-18 (IL-18)	IL_18	131	pg/mL		131	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	11	2.38E+13	Interleukin-18 (IL-18)	IL_18	336	pg/mL		336	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	75	3.38E+13	Interleukin-18 (IL-18)	IL_18	182	pg/mL		182	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	52	2.38E+13	Interleukin-18 (IL-18)	IL_18	493	pg/mL		493	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	97	2.38E+13	Interleukin-18 (IL-18)	IL_18	187	pg/mL		187	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	4	2.38E+13	Interleukin-18 (IL-18)	IL_18	173	pg/mL		173	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	26	2.38E+13	Interleukin-18 (IL-18)	IL_18	240	pg/mL		240	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	85	2.38E+13	Interleukin-18 (IL-18)	IL_18	133	pg/mL		133	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	76	3.38E+13	Interleukin-18 (IL-18)	IL_18	241	pg/mL		241	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	25	2.38E+13	Interleukin-18 (IL-18)	IL_18	334	pg/mL		334	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	76	3.38E+13	Interleukin-18 (IL-18)	IL_18	243	pg/mL		243	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	57	2.38E+13	Interleukin-18 (IL-18)	IL_18	352	pg/mL		352	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	45	2.38E+13	Interleukin-18 (IL-18)	IL_18	363	pg/mL		363	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	88	2.38E+13	Interleukin-18 (IL-18)	IL_18	508	pg/mL		508	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	4	2.38E+13	Interleukin-18 (IL-18)	IL_18	169	pg/mL		169	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	71	2.38E+13	Interleukin-18 (IL-18)	IL_18	361	pg/mL		361	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	26	2.38E+13	Interleukin-18 (IL-18)	IL_18	248	pg/mL		248	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	85	2.38E+13	Interleukin-18 (IL-18)	IL_18	128	pg/mL		128	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	76	3.38E+13	Interleukin-18 (IL-18)	IL_18	258	pg/mL		258	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	11	2.38E+13	Interleukin-18 (IL-18)	IL_18	391	pg/mL		391	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	76	3.38E+13	Interleukin-18 (IL-18)	IL_18	246	pg/mL		246	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	52	2.38E+13	Interleukin-18 (IL-18)	IL_18	564	pg/mL		564	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	88	2.38E+13	Interleukin-18 (IL-18)	IL_18	477	pg/mL		477	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	17	2.38E+13	Interleukin-18 (IL-18)	IL_18	173	pg/mL		173	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	26	2.38E+13	Interleukin-18 (IL-18)	IL_18	252	pg/mL		252	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	85	2.38E+13	Interleukin-18 (IL-18)	IL_18	132	pg/mL		132	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	76	3.38E+13	Interleukin-18 (IL-18)	IL_18	206	pg/mL		206	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	25	2.38E+13	Interleukin-18 (IL-18)	IL_18	368	pg/mL		368	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	77	3.38E+13	Interleukin-18 (IL-18)	IL_18	417	pg/mL		417	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	71	2.38E+13	Interleukin-18 (IL-18)	IL_18	371	pg/mL		371	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	30	2.38E+13	Interleukin-18 (IL-18)	IL_18	153	pg/mL		153	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	119	2.38E+13	Interleukin-18 (IL-18)	IL_18	273	pg/mL		273	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	6	2.38E+13	Interleukin-18 (IL-18)	IL_18	203	pg/mL		203	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	54	2.38E+13	Interleukin-18 (IL-18)	IL_18	275	pg/mL		275	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	58	2.38E+13	Interleukin-18 (IL-18)	IL_18	764	pg/mL		764	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	76	3.38E+13	Interleukin-18 (IL-18)	IL_18	256	pg/mL		256	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	13	2.38E+13	Interleukin-18 (IL-18)	IL_18	242	pg/mL		242	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	81	3.38E+13	Interleukin-18 (IL-18)	IL_18	341	pg/mL		341	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	71	2.38E+13	Interleukin-18 (IL-18)	IL_18	398	pg/mL		398	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	34	2.38E+13	Interleukin-18 (IL-18)	IL_18	271	pg/mL		271	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	88	2.38E+13	Interleukin-18 (IL-18)	IL_18	628	pg/mL		628	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	1	2.38E+13	Interleukin-18 (IL-18)	IL_18	251	pg/mL		251	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	54	2.38E+13	Interleukin-18 (IL-18)	IL_18	308	pg/mL		308	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	54	2.38E+13	Interleukin-18 (IL-18)	IL_18	288	pg/mL		288	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	77	3.38E+13	Interleukin-18 (IL-18)	IL_18	464	pg/mL		464	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	11	2.38E+13	Interleukin-18 (IL-18)	IL_18	436	pg/mL		436	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	81	3.38E+13	Interleukin-18 (IL-18)	IL_18	662	pg/mL		662	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	71	2.38E+13	Interleukin-18 (IL-18)	IL_18	407	pg/mL		407	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	30	2.38E+13	Interleukin-18 (IL-18)	IL_18	183	pg/mL		183	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	66	2.38E+13	Interleukin-18 (IL-18)	IL_18	184	pg/mL		184	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	5	2.38E+13	Interleukin-18 (IL-18)	IL_18	179	pg/mL		179	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	6	2.38E+13	Interleukin-18 (IL-18)	IL_18	157	pg/mL		157	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	68	2.38E+13	Interleukin-18 (IL-18)	IL_18	106	pg/mL		106	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	77	3.38E+13	Interleukin-18 (IL-18)	IL_18	326	pg/mL		326	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	10	2.38E+13	Interleukin-18 (IL-18)	IL_18	429	pg/mL		429	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	81	3.38E+13	Interleukin-18 (IL-18)	IL_18	615	pg/mL		615	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	71	2.38E+13	Interleukin-18 (IL-18)	IL_18	414	pg/mL		414	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	47	2.38E+13	Interleukin-18 (IL-18)	IL_18	427	pg/mL		427	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	88	2.38E+13	Interleukin-18 (IL-18)	IL_18	617	pg/mL		617	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	8	2.38E+13	Interleukin-18 (IL-18)	IL_18	363	pg/mL		363	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	18	2.38E+13	Interleukin-18 (IL-18)	IL_18	79	pg/mL		79	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	115	2.38E+13	Interleukin-18 (IL-18)	IL_18	98	pg/mL		98	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	68	2.38E+13	Interleukin-18 (IL-18)	IL_18	84	pg/mL		84	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	77	3.38E+13	Interleukin-18 (IL-18)	IL_18	356	pg/mL		356	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	8	2.38E+13	Interleukin-18 (IL-18)	IL_18	545	pg/mL		545	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	83	3.38E+13	Interleukin-18 (IL-18)	IL_18	500	pg/mL		500	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	71	2.38E+13	Interleukin-18 (IL-18)	IL_18	466	pg/mL		466	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	52	2.38E+13	Interleukin-18 (IL-18)	IL_18	384	pg/mL		384	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	5	2.38E+13	Interleukin-18 (IL-18)	IL_18	125	pg/mL		125	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	18	2.38E+13	Interleukin-18 (IL-18)	IL_18	93	pg/mL		93	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	68	2.38E+13	Interleukin-18 (IL-18)	IL_18	106	pg/mL		106	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	77	3.38E+13	Interleukin-18 (IL-18)	IL_18	489	pg/mL		489	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	15	2.38E+13	Interleukin-18 (IL-18)	IL_18	31	pg/mL		31	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	83	3.38E+13	Interleukin-18 (IL-18)	IL_18	510	pg/mL		510	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	71	2.38E+13	Interleukin-18 (IL-18)	IL_18	316	pg/mL		316	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	30	2.38E+13	Interleukin-18 (IL-18)	IL_18	224	pg/mL		224	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	74	2.38E+13	Interleukin-18 (IL-18)	IL_18	1160	pg/mL		1160	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	8	2.38E+13	Interleukin-18 (IL-18)	IL_18	379	pg/mL		379	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	24	2.38E+13	Interleukin-18 (IL-18)	IL_18	305	pg/mL		305	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	6	2.38E+13	Interleukin-18 (IL-18)	IL_18	172	pg/mL		172	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	95	2.38E+13	Interleukin-18 (IL-18)	IL_18	188	pg/mL		188	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	81	3.38E+13	Interleukin-18 (IL-18)	IL_18	497	pg/mL		497	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	94	3.38E+13	Interleukin-18 (IL-18)	IL_18	182	pg/mL		182	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	79	2.38E+13	Interleukin-18 (IL-18)	IL_18	307	pg/mL		307	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	47	2.38E+13	Interleukin-18 (IL-18)	IL_18	486	pg/mL		486	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	74	2.38E+13	Interleukin-18 (IL-18)	IL_18	747	pg/mL		747	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	5	2.38E+13	Interleukin-18 (IL-18)	IL_18	147	pg/mL		147	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	15	2.38E+13	Interleukin-18 (IL-18)	IL_18	35	pg/mL		35	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	81	3.38E+13	Interleukin-18 (IL-18)	IL_18	453	pg/mL		453	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	40	2.38E+13	Interleukin-18 (IL-18)	IL_18	115	pg/mL		115	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	95	2.38E+13	Interleukin-18 (IL-18)	IL_18	201	pg/mL		201	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	94	3.38E+13	Interleukin-18 (IL-18)	IL_18	206	pg/mL		206	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	79	2.38E+13	Interleukin-18 (IL-18)	IL_18	289	pg/mL		289	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	45	2.38E+13	Interleukin-18 (IL-18)	IL_18	414	pg/mL		414	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	74	2.38E+13	Interleukin-18 (IL-18)	IL_18	827	pg/mL		827	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	20	2.38E+13	Interleukin-18 (IL-18)	IL_18	197	pg/mL		197	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	49	2.38E+13	Interleukin-18 (IL-18)	IL_18	270	pg/mL		270	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	95	2.38E+13	Interleukin-18 (IL-18)	IL_18	199	pg/mL		199	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	81	3.38E+13	Interleukin-18 (IL-18)	IL_18	464	pg/mL		464	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	40	2.38E+13	Interleukin-18 (IL-18)	IL_18	170	pg/mL		170	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	79	2.38E+13	Interleukin-18 (IL-18)	IL_18	280	pg/mL		280	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	34	2.38E+13	Interleukin-18 (IL-18)	IL_18	222	pg/mL		222	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	66	2.38E+13	Interleukin-18 (IL-18)	IL_18	173	pg/mL		173	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	20	2.38E+13	Interleukin-18 (IL-18)	IL_18	176	pg/mL		176	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	68	2.38E+13	Interleukin-18 (IL-18)	IL_18	100	pg/mL		100	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	95	2.38E+13	Interleukin-18 (IL-18)	IL_18	195	pg/mL		195	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	83	3.38E+13	Interleukin-18 (IL-18)	IL_18	578	pg/mL		578	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	14	2.38E+13	Interleukin-18 (IL-18)	IL_18	161	pg/mL		161	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	79	2.38E+13	Interleukin-18 (IL-18)	IL_18	294	pg/mL		294	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	30	2.38E+13	Interleukin-18 (IL-18)	IL_18	198	pg/mL		198	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	103	2.38E+13	Interleukin-18 (IL-18)	IL_18	232	pg/mL		232	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	20	2.38E+13	Interleukin-18 (IL-18)	IL_18	184	pg/mL		184	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	40	2.38E+13	Interleukin-18 (IL-18)	IL_18	113	pg/mL		113	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	35	2.38E+13	Interleukin-18 (IL-18)	IL_18	283	pg/mL		283	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	23	2.38E+13	Interleukin-18 (IL-18)	IL_18	167	pg/mL		167	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	83	3.38E+13	Interleukin-18 (IL-18)	IL_18	686	pg/mL		686	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	79	2.38E+13	Interleukin-18 (IL-18)	IL_18	274	pg/mL		274	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	27	2.38E+13	Interleukin-18 (IL-18)	IL_18	337	pg/mL		337	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	119	2.38E+13	Interleukin-18 (IL-18)	IL_18	266	pg/mL		266	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	39	2.38E+13	Interleukin-18 (IL-18)	IL_18	125	pg/mL		125	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	79	2.38E+13	Interleukin-18 (IL-18)	IL_18	366	pg/mL		366	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	41	2.38E+13	Interleukin-18 (IL-18)	IL_18	142	pg/mL		142	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	83	3.38E+13	Interleukin-18 (IL-18)	IL_18	567	pg/mL		567	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	24	2.38E+13	Interleukin-18 (IL-18)	IL_18	391	pg/mL		391	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	68	2.38E+13	Interleukin-18 (IL-18)	IL_18	106	pg/mL		106	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	111	2.38E+13	Interleukin-18 (IL-18)	IL_18	615	pg/mL		615	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	115	2.38E+13	Interleukin-18 (IL-18)	IL_18	84	pg/mL		84	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	41	2.38E+13	Interleukin-18 (IL-18)	IL_18	164	pg/mL		164	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	83	3.38E+13	Interleukin-18 (IL-18)	IL_18	560	pg/mL		560	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	24	2.38E+13	Interleukin-18 (IL-18)	IL_18	409	pg/mL		409	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	54	2.38E+13	Interleukin-18 (IL-18)	IL_18	331	pg/mL		331	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	79	2.38E+13	Interleukin-18 (IL-18)	IL_18	256	pg/mL		256	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	39	2.38E+13	Interleukin-18 (IL-18)	IL_18	111	pg/mL		111	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	111	2.38E+13	Interleukin-18 (IL-18)	IL_18	694	pg/mL		694	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	97	2.38E+13	Interleukin-18 (IL-18)	IL_18	197	pg/mL		197	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	39	2.38E+13	Interleukin-18 (IL-18)	IL_18	119	pg/mL		119	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	93	2.38E+13	Interleukin-18 (IL-18)	IL_18	152	pg/mL		152	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	63	2.38E+13	Interleukin-18 (IL-18)	IL_18	189	pg/mL		189	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	94	3.38E+13	Interleukin-18 (IL-18)	IL_18	152	pg/mL		152	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	14	2.38E+13	Interleukin-18 (IL-18)	IL_18	152	pg/mL		152	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	49	2.38E+13	Interleukin-18 (IL-18)	IL_18	308	pg/mL		308	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	47	2.38E+13	Interleukin-18 (IL-18)	IL_18	555	pg/mL		555	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	115	2.38E+13	Interleukin-18 (IL-18)	IL_18	173	pg/mL		173	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	39	2.38E+13	Interleukin-18 (IL-18)	IL_18	99	pg/mL		99	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	49	2.38E+13	Interleukin-18 (IL-18)	IL_18	272	pg/mL		272	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	94	3.38E+13	Interleukin-18 (IL-18)	IL_18	157	pg/mL		157	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	14	2.38E+13	Interleukin-18 (IL-18)	IL_18	152	pg/mL		152	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	93	2.38E+13	Interleukin-18 (IL-18)	IL_18	154	pg/mL		154	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	73	2.38E+13	Interleukin-18 (IL-18)	IL_18	84	pg/mL		84	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	45	2.38E+13	Interleukin-18 (IL-18)	IL_18	705	pg/mL		705	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	119	2.38E+13	Interleukin-18 (IL-18)	IL_18	301	pg/mL		301	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	3	2.38E+13	Interleukin-18 (IL-18)	IL_18	595	pg/mL		595	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	54	2.38E+13	Interleukin-18 (IL-18)	IL_18	278	pg/mL		278	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	73	2.38E+13	Interleukin-18 (IL-18)	IL_18	76	pg/mL		76	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	94	3.38E+13	Interleukin-18 (IL-18)	IL_18	157	pg/mL		157	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	25	2.38E+13	Interleukin-18 (IL-18)	IL_18	552	pg/mL		552	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	93	2.38E+13	Interleukin-18 (IL-18)	IL_18	165	pg/mL		165	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	47	2.38E+13	Interleukin-18 (IL-18)	IL_18	491	pg/mL		491	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	66	2.38E+13	Interleukin-18 (IL-18)	IL_18	166	pg/mL		166	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	15	2.38E+13	Interleukin-18 (IL-18)	IL_18	33	pg/mL		33	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	49	2.38E+13	Interleukin-18 (IL-18)	IL_18	289	pg/mL		289	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	73	2.38E+13	Interleukin-18 (IL-18)	IL_18	79	pg/mL		79	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	94	3.38E+13	Interleukin-18 (IL-18)	IL_18	157	pg/mL		157	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	14	2.38E+13	Interleukin-18 (IL-18)	IL_18	148	pg/mL		148	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	93	2.38E+13	Interleukin-18 (IL-18)	IL_18	159	pg/mL		159	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	45	2.38E+13	Interleukin-18 (IL-18)	IL_18	649	pg/mL		649	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	97	2.38E+13	Interleukin-18 (IL-18)	IL_18	209	pg/mL		209	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	49	2.38E+13	Interleukin-18 (IL-18)	IL_18	295	pg/mL		295	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	39	2.38E+13	Interleukin-18 (IL-18)	IL_18	90	pg/mL		90	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	40	2.38E+13	Interleukin-18 (IL-18)	IL_18	450	pg/mL		450	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	15	2.38E+13	Interleukin-18 (IL-18)	IL_18	39	pg/mL		39	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	93	2.38E+13	Interleukin-18 (IL-18)	IL_18	339	pg/mL		339	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	47	2.38E+13	Interleukin-18 (IL-18)	IL_18	502	pg/mL		502	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	74	2.38E+13	Interleukin-18 (IL-18)	IL_18	812	pg/mL		812	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	15	2.38E+13	Interleukin-18 (IL-18)	IL_18	44	pg/mL		44	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	54	2.38E+13	Interleukin-18 (IL-18)	IL_18	407	pg/mL		407	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	24	2.38E+13	Interleukin-18 (IL-18)	IL_18	300	pg/mL		300	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	93	2.38E+13	Interleukin-18 (IL-18)	IL_18	352	pg/mL		352	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	106	2.38E+13	Interleukin-18 (IL-18)	IL_18	215	pg/mL		215	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	115	2.38E+13	Interleukin-18 (IL-18)	IL_18	256	pg/mL		256	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	4	2.38E+13	Interleukin-18 (IL-18)	IL_18	218	pg/mL		218	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	49	2.38E+13	Interleukin-18 (IL-18)	IL_18	287	pg/mL		287	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	40	2.38E+13	Interleukin-18 (IL-18)	IL_18	100	pg/mL		100	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	57	2.38E+13	Interleukin-18 (IL-18)	IL_18	339	pg/mL		339	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	106	2.38E+13	Interleukin-18 (IL-18)	IL_18	262	pg/mL		262	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	66	2.38E+13	Interleukin-18 (IL-18)	IL_18	139	pg/mL		139	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	4	2.38E+13	Interleukin-18 (IL-18)	IL_18	216	pg/mL		216	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	18	2.38E+13	Interleukin-18 (IL-18)	IL_18	74	pg/mL		74	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	12	2.38E+13	Interleukin-18 (IL-18)	IL_18	646	pg/mL		646	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	56	2.38E+13	Interleukin-18 (IL-18)	IL_18	253	pg/mL		253	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	73	2.38E+13	Interleukin-18 (IL-18)	IL_18	185	pg/mL		185	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	115	2.38E+13	Interleukin-18 (IL-18)	IL_18	88	pg/mL		88	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	3	2.38E+13	Interleukin-18 (IL-18)	IL_18	434	pg/mL		434	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	21	2.38E+13	Interleukin-18 (IL-18)	IL_18	105	pg/mL		105	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	38	2.38E+13	Interleukin-18 (IL-18)	IL_18	291	pg/mL		291	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	106	2.38E+13	Interleukin-18 (IL-18)	IL_18	140	pg/mL		140	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	74	2.38E+13	Interleukin-18 (IL-18)	IL_18	772	pg/mL		772	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	12	2.38E+13	Interleukin-18 (IL-18)	IL_18	648	pg/mL		648	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	15	2.38E+13	Interleukin-18 (IL-18)	IL_18	41	pg/mL		41	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	22	2.38E+13	Interleukin-18 (IL-18)	IL_18	213	pg/mL		213	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	96	2.38E+13	Interleukin-18 (IL-18)	IL_18	628	pg/mL		628	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	119	2.38E+13	Interleukin-18 (IL-18)	IL_18	346	pg/mL		346	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	38	2.38E+13	Interleukin-18 (IL-18)	IL_18	242	pg/mL		242	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	17	2.38E+13	Interleukin-18 (IL-18)	IL_18	105	pg/mL		105	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	18	2.38E+13	Interleukin-18 (IL-18)	IL_18	82	pg/mL		82	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	103	2.38E+13	Interleukin-18 (IL-18)	IL_18	251	pg/mL		251	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	97	2.38E+13	Interleukin-18 (IL-18)	IL_18	223	pg/mL		223	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	21	2.38E+13	Interleukin-18 (IL-18)	IL_18	134	pg/mL		134	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	12	2.38E+13	Interleukin-18 (IL-18)	IL_18	921	pg/mL		921	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	21	2.38E+13	Interleukin-18 (IL-18)	IL_18	113	pg/mL		113	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	90	2.38E+13	Interleukin-18 (IL-18)	IL_18	1460	pg/mL		1460	562	102
+SCREENING	CA209-009	Human InflammationMAP® 1.0	60	2.38E+13	Interleukin-18 (IL-18)	IL_18	149	pg/mL		149	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	21	2.38E+13	Interleukin-18 (IL-18)	IL_18	119	pg/mL		119	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	21	2.38E+13	Interleukin-18 (IL-18)	IL_18	157	pg/mL		157	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	25	2.38E+13	Interleukin-18 (IL-18)	IL_18	309	pg/mL		309	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	103	2.38E+13	Interleukin-18 (IL-18)	IL_18	183	pg/mL		183	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	66	2.38E+13	Interleukin-18 (IL-18)	IL_18	154	pg/mL		154	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	18	2.38E+13	Interleukin-18 (IL-18)	IL_18	76	pg/mL		76	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	17	2.38E+13	Interleukin-18 (IL-18)	IL_18	126	pg/mL		126	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	14	2.38E+13	Interleukin-18 (IL-18)	IL_18	269	pg/mL		269	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	112	2.38E+13	Interleukin-18 (IL-18)	IL_18	269	pg/mL		269	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	84	2.38E+13	Interleukin-18 (IL-18)	IL_18	235	pg/mL		235	562	102
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	112	2.38E+13	Interleukin-18 (IL-18)	IL_18	348	pg/mL		348	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	22	2.38E+13	Interleukin-18 (IL-18)	IL_18	258	pg/mL		258	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	32	2.38E+13	Interleukin-18 (IL-18)	IL_18	237	pg/mL		237	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	38	2.38E+13	Interleukin-18 (IL-18)	IL_18	282	pg/mL		282	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	115	2.38E+13	Interleukin-18 (IL-18)	IL_18	125	pg/mL		125	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	21	2.38E+13	Interleukin-18 (IL-18)	IL_18	85	pg/mL		85	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	43	2.38E+13	Interleukin-18 (IL-18)	IL_18	173	pg/mL		173	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	38	2.38E+13	Interleukin-18 (IL-18)	IL_18	210	pg/mL		210	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	112	2.38E+13	Interleukin-18 (IL-18)	IL_18	322	pg/mL		322	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	88	2.38E+13	Interleukin-18 (IL-18)	IL_18	481	pg/mL		481	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	18	2.38E+13	Interleukin-18 (IL-18)	IL_18	78	pg/mL		78	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	62	2.38E+13	Interleukin-18 (IL-18)	IL_18	134	pg/mL		134	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	24	2.38E+13	Interleukin-18 (IL-18)	IL_18	255	pg/mL		255	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	112	2.38E+13	Interleukin-18 (IL-18)	IL_18	284	pg/mL		284	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	97	2.38E+13	Interleukin-18 (IL-18)	IL_18	194	pg/mL		194	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	22	2.38E+13	Interleukin-18 (IL-18)	IL_18	238	pg/mL		238	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	32	2.38E+13	Interleukin-18 (IL-18)	IL_18	197	pg/mL		197	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	40	2.38E+13	Interleukin-18 (IL-18)	IL_18	95	pg/mL		95	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	112	2.38E+13	Interleukin-18 (IL-18)	IL_18	292	pg/mL		292	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	119	2.38E+13	Interleukin-18 (IL-18)	IL_18	308	pg/mL		308	562	102
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	32	2.38E+13	Interleukin-18 (IL-18)	IL_18	187	pg/mL		187	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	20	2.38E+13	Interleukin-18 (IL-18)	IL_18	179	pg/mL		179	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	12	2.38E+13	Interleukin-18 (IL-18)	IL_18	700	pg/mL		700	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	112	2.38E+13	Interleukin-18 (IL-18)	IL_18	341	pg/mL		341	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	74	2.38E+13	Interleukin-18 (IL-18)	IL_18	2050	pg/mL		2050	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	20	2.38E+13	Interleukin-18 (IL-18)	IL_18	199	pg/mL		199	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	43	2.38E+13	Interleukin-18 (IL-18)	IL_18	243	pg/mL		243	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	38	2.38E+13	Interleukin-18 (IL-18)	IL_18	197	pg/mL		197	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	100	2.38E+13	Interleukin-18 (IL-18)	IL_18	116	pg/mL		116	562	102
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	88	2.38E+13	Interleukin-18 (IL-18)	IL_18	534	pg/mL		534	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	32	2.38E+13	Interleukin-18 (IL-18)	IL_18	253	pg/mL		253	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	62	2.38E+13	Interleukin-18 (IL-18)	IL_18	126	pg/mL		126	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	24	2.38E+13	Interleukin-18 (IL-18)	IL_18	264	pg/mL		264	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	100	2.38E+13	Interleukin-18 (IL-18)	IL_18	145	pg/mL		145	562	102
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	112	2.38E+13	Interleukin-18 (IL-18)	IL_18	277	pg/mL		277	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	32	2.38E+13	Interleukin-18 (IL-18)	IL_18	219	pg/mL		219	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	40	2.38E+13	Interleukin-18 (IL-18)	IL_18	91	pg/mL		91	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	22	2.38E+13	Interleukin-18 (IL-18)	IL_18	254	pg/mL		254	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	111	2.38E+13	Interleukin-18 (IL-18)	IL_18	527	pg/mL		527	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	74	2.38E+13	Interleukin-18 (IL-18)	IL_18	1100	pg/mL		1100	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	62	2.38E+13	Interleukin-18 (IL-18)	IL_18	130	pg/mL		130	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	12	2.38E+13	Interleukin-18 (IL-18)	IL_18	605	pg/mL		605	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	28	2.38E+13	Interleukin-18 (IL-18)	IL_18	99	pg/mL		99	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	97	2.38E+13	Interleukin-18 (IL-18)	IL_18	190	pg/mL		190	562	102
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	32	2.38E+13	Interleukin-18 (IL-18)	IL_18	217	pg/mL		217	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	38	2.38E+13	Interleukin-18 (IL-18)	IL_18	244	pg/mL		244	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	29	2.38E+13	Interleukin-18 (IL-18)	IL_18	155	pg/mL		155	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	88	2.38E+13	Interleukin-18 (IL-18)	IL_18	491	pg/mL		491	562	102
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	20	2.38E+13	Interleukin-18 (IL-18)	IL_18	185	pg/mL		185	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	12	2.38E+13	Interleukin-18 (IL-18)	IL_18	664	pg/mL		664	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	23	2.38E+13	Interleukin-18 (IL-18)	IL_18	184	pg/mL		184	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	119	2.38E+13	Interleukin-18 (IL-18)	IL_18	270	pg/mL		270	562	102
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	28	2.38E+13	Interleukin-18 (IL-18)	IL_18	93	pg/mL		93	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	43	2.38E+13	Interleukin-18 (IL-18)	IL_18	229	pg/mL		229	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	25	2.38E+13	Interleukin-18 (IL-18)	IL_18	377	pg/mL		377	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	23	2.38E+13	Interleukin-18 (IL-18)	IL_18	197	pg/mL		197	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	28	2.38E+13	Interleukin-18 (IL-18)	IL_18	81	pg/mL		81	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	14	2.38E+13	Interleukin-18 (IL-18)	IL_18	233	pg/mL		233	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	28	2.38E+13	Interleukin-18 (IL-18)	IL_18	93	pg/mL		93	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	23	2.38E+13	Interleukin-18 (IL-18)	IL_18	179	pg/mL		179	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	38	2.38E+13	Interleukin-18 (IL-18)	IL_18	357	pg/mL		357	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	23	2.38E+13	Interleukin-18 (IL-18)	IL_18	196	pg/mL		196	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	22	2.38E+13	Interleukin-18 (IL-18)	IL_18	207	pg/mL		207	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	95	2.38E+13	Interleukin-18 (IL-18)	IL_18	420	pg/mL		420	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	41	2.38E+13	Interleukin-18 (IL-18)	IL_18	209	pg/mL		209	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	22	2.38E+13	Interleukin-18 (IL-18)	IL_18	176	pg/mL		176	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	49	2.38E+13	Interleukin-18 (IL-18)	IL_18	500	pg/mL		500	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	29	2.38E+13	Interleukin-18 (IL-18)	IL_18	203	pg/mL		203	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	26	2.38E+13	Interleukin-18 (IL-18)	IL_18	251	pg/mL		251	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	54	2.38E+13	Interleukin-18 (IL-18)	IL_18	787	pg/mL		787	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	41	2.38E+13	Interleukin-18 (IL-18)	IL_18	267	pg/mL		267	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	51	2.38E+13	Interleukin-18 (IL-18)	IL_18	119	pg/mL		119	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	68	2.38E+13	Interleukin-18 (IL-18)	IL_18	168	pg/mL		168	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	29	2.38E+13	Interleukin-18 (IL-18)	IL_18	156	pg/mL		156	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	36	2.38E+13	Interleukin-18 (IL-18)	IL_18	176	pg/mL		176	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	95	2.38E+13	Interleukin-18 (IL-18)	IL_18	527	pg/mL		527	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	41	2.38E+13	Interleukin-18 (IL-18)	IL_18	201	pg/mL		201	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	51	2.38E+13	Interleukin-18 (IL-18)	IL_18	122	pg/mL		122	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	86	2.38E+13	Interleukin-18 (IL-18)	IL_18	879	pg/mL		879	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	29	2.38E+13	Interleukin-18 (IL-18)	IL_18	153	pg/mL		153	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	51	2.38E+13	Interleukin-18 (IL-18)	IL_18	127	pg/mL		127	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	86	2.38E+13	Interleukin-18 (IL-18)	IL_18	916	pg/mL		916	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	29	2.38E+13	Interleukin-18 (IL-18)	IL_18	183	pg/mL		183	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	29	2.38E+13	Interleukin-18 (IL-18)	IL_18	147	pg/mL		147	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	72	2.38E+13	Interleukin-18 (IL-18)	IL_18	391	pg/mL		391	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	15	2.38E+13	Interleukin-18 (IL-18)	IL_18	42	pg/mL		42	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	72	2.38E+13	Interleukin-18 (IL-18)	IL_18	607	pg/mL		607	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	41	2.38E+13	Interleukin-18 (IL-18)	IL_18	199	pg/mL		199	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	28	2.38E+13	Interleukin-18 (IL-18)	IL_18	247	pg/mL		247	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	50	2.38E+13	Interleukin-18 (IL-18)	IL_18	165	pg/mL		165	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	62	2.38E+13	Interleukin-18 (IL-18)	IL_18	190	pg/mL		190	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	23	2.38E+13	Interleukin-18 (IL-18)	IL_18	230	pg/mL		230	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	72	2.38E+13	Interleukin-18 (IL-18)	IL_18	1080	pg/mL		1080	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	50	2.38E+13	Interleukin-18 (IL-18)	IL_18	197	pg/mL		197	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	86	2.38E+13	Interleukin-18 (IL-18)	IL_18	1330	pg/mL		1330	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	1	2.38E+13	Interleukin-18 (IL-18)	IL_18	212	pg/mL		212	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	63	2.38E+13	Interleukin-18 (IL-18)	IL_18	237	pg/mL		237	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	23	2.38E+13	Interleukin-18 (IL-18)	IL_18	223	pg/mL		223	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	86	2.38E+13	Interleukin-18 (IL-18)	IL_18	928	pg/mL		928	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	2	2.38E+13	Interleukin-18 (IL-18)	IL_18	200	pg/mL		200	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	28	2.38E+13	Interleukin-18 (IL-18)	IL_18	240	pg/mL		240	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	72	2.38E+13	Interleukin-18 (IL-18)	IL_18	677	pg/mL		677	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	63	2.38E+13	Interleukin-18 (IL-18)	IL_18	209	pg/mL		209	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	106	2.38E+13	Interleukin-18 (IL-18)	IL_18	216	pg/mL		216	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	50	2.38E+13	Interleukin-18 (IL-18)	IL_18	131	pg/mL		131	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	106	2.38E+13	Interleukin-18 (IL-18)	IL_18	196	pg/mL		196	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	63	2.38E+13	Interleukin-18 (IL-18)	IL_18	217	pg/mL		217	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	106	2.38E+13	Interleukin-18 (IL-18)	IL_18	206	pg/mL		206	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	50	2.38E+13	Interleukin-18 (IL-18)	IL_18	150	pg/mL		150	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	51	2.38E+13	Interleukin-18 (IL-18)	IL_18	274	pg/mL		274	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	51	2.38E+13	Interleukin-18 (IL-18)	IL_18	117	pg/mL		117	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	51	2.38E+13	Interleukin-18 (IL-18)	IL_18	206	pg/mL		206	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	51	2.38E+13	Interleukin-18 (IL-18)	IL_18	131	pg/mL		131	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	62	2.38E+13	Interleukin-18 (IL-18)	IL_18	201	pg/mL		201	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	58	2.38E+13	Interleukin-18 (IL-18)	IL_18	164	pg/mL		164	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	86	2.38E+13	Interleukin-18 (IL-18)	IL_18	1240	pg/mL		1240	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	48	2.38E+13	Interleukin-18 (IL-18)	IL_18	795	pg/mL		795	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	72	2.38E+13	Interleukin-18 (IL-18)	IL_18	406	pg/mL		406	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	58	2.38E+13	Interleukin-18 (IL-18)	IL_18	167	pg/mL		167	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	72	2.38E+13	Interleukin-18 (IL-18)	IL_18	411	pg/mL		411	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	58	2.38E+13	Interleukin-18 (IL-18)	IL_18	153	pg/mL		153	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	43	2.38E+13	Interleukin-18 (IL-18)	IL_18	479	pg/mL		479	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	39	2.38E+13	Interleukin-18 (IL-18)	IL_18	103	pg/mL		103	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	32	2.38E+13	Interleukin-18 (IL-18)	IL_18	506	pg/mL		506	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	50	2.38E+13	Interleukin-18 (IL-18)	IL_18	226	pg/mL		226	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	62	2.38E+13	Interleukin-18 (IL-18)	IL_18	297	pg/mL		297	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	29	2.38E+13	Interleukin-18 (IL-18)	IL_18	121	pg/mL		121	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	72	2.38E+13	Interleukin-18 (IL-18)	IL_18	411	pg/mL		411	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	50	2.38E+13	Interleukin-18 (IL-18)	IL_18	220	pg/mL		220	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	10	2.38E+13	Interleukin-18 (IL-18)	IL_18	313	pg/mL		313	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	10	2.38E+13	Interleukin-18 (IL-18)	IL_18	297	pg/mL		297	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	48	2.38E+13	Interleukin-18 (IL-18)	IL_18	1070	pg/mL		1070	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	41	2.38E+13	Interleukin-18 (IL-18)	IL_18	313	pg/mL		313	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	99	2.38E+13	Interleukin-18 (IL-18)	IL_18	422	pg/mL		422	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	99	2.38E+13	Interleukin-18 (IL-18)	IL_18	522	pg/mL		522	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	39	2.38E+13	Interleukin-18 (IL-18)	IL_18	201	pg/mL		201	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	99	2.38E+13	Interleukin-18 (IL-18)	IL_18	471	pg/mL		471	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	99	2.38E+13	Interleukin-18 (IL-18)	IL_18	458	pg/mL		458	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	42	2.38E+13	Interleukin-18 (IL-18)	IL_18	602	pg/mL		602	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	64	2.38E+13	Interleukin-18 (IL-18)	IL_18	204	pg/mL		204	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	48	2.38E+13	Interleukin-18 (IL-18)	IL_18	961	pg/mL		961	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	85	2.38E+13	Interleukin-18 (IL-18)	IL_18	326	pg/mL		326	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	73	2.38E+13	Interleukin-18 (IL-18)	IL_18	152	pg/mL		152	538	86
+C4D1_0H	CA209-009	Human InflammationMAP® 1.0	50	2.38E+13	Interleukin-18 (IL-18)	IL_18	323	pg/mL		323	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	85	2.38E+13	Interleukin-18 (IL-18)	IL_18	221	pg/mL		221	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	105	2.38E+13	Interleukin-18 (IL-18)	IL_18	172	pg/mL		172	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	105	2.38E+13	Interleukin-18 (IL-18)	IL_18	196	pg/mL		196	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	105	2.38E+13	Interleukin-18 (IL-18)	IL_18	162	pg/mL		162	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	106	2.38E+13	Interleukin-18 (IL-18)	IL_18	192	pg/mL		192	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	73	2.38E+13	Interleukin-18 (IL-18)	IL_18	174	pg/mL		174	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	73	2.38E+13	Interleukin-18 (IL-18)	IL_18	157	pg/mL		157	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	90	2.38E+13	Interleukin-18 (IL-18)	IL_18	1360	pg/mL		1360	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	90	2.38E+13	Interleukin-18 (IL-18)	IL_18	1480	pg/mL		1480	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	90	2.38E+13	Interleukin-18 (IL-18)	IL_18	1360	pg/mL		1360	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	90	2.38E+13	Interleukin-18 (IL-18)	IL_18	1210	pg/mL		1210	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	96	2.38E+13	Interleukin-18 (IL-18)	IL_18	416	pg/mL		416	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	96	2.38E+13	Interleukin-18 (IL-18)	IL_18	437	pg/mL		437	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	90	2.38E+13	Interleukin-18 (IL-18)	IL_18	1400	pg/mL		1400	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	96	2.38E+13	Interleukin-18 (IL-18)	IL_18	403	pg/mL		403	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	96	2.38E+13	Interleukin-18 (IL-18)	IL_18	427	pg/mL		427	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	90	2.38E+13	Interleukin-18 (IL-18)	IL_18	1800	pg/mL		1800	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	111	2.38E+13	Interleukin-18 (IL-18)	IL_18	527	pg/mL		527	538	86
+C1D1_0H	CA209-009	Human InflammationMAP® 1.0	103	2.38E+13	Interleukin-18 (IL-18)	IL_18	204	pg/mL		204	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	103	2.38E+13	Interleukin-18 (IL-18)	IL_18	201	pg/mL		201	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	111	2.38E+13	Interleukin-18 (IL-18)	IL_18	543	pg/mL		543	538	86
+C2D1_0H	CA209-009	Human InflammationMAP® 1.0	96	2.38E+13	Interleukin-18 (IL-18)	IL_18	774	pg/mL		774	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	111	2.38E+13	Interleukin-18 (IL-18)	IL_18	519	pg/mL		519	538	86
+C1D1 3HR	CA209-009	Human InflammationMAP® 1.0	103	2.38E+13	Interleukin-18 (IL-18)	IL_18	221	pg/mL		221	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	111	2.38E+13	Interleukin-18 (IL-18)	IL_18	490	pg/mL		490	538	86
+C1D1 7HR	CA209-009	Human InflammationMAP® 1.0	103	2.38E+13	Interleukin-18 (IL-18)	IL_18	221	pg/mL		221	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	96	2.38E+13	Interleukin-18 (IL-18)	IL_18	744	pg/mL		744	538	86
+C1D2 24HR	CA209-009	Human InflammationMAP® 1.0	105	2.38E+13	Interleukin-18 (IL-18)	IL_18	177	pg/mL		177	538	86
+C2D8 168HR	CA209-009	Human InflammationMAP® 1.0	105	2.38E+13	Interleukin-18 (IL-18)	IL_18	242	pg/mL		242	538	86
