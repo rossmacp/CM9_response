@@ -6,12 +6,9 @@
 
 **CA209009-tumorAffy-HGU219_HS_ENTREZG.rma**  #RMA Expression values, also available in E-MTAB-3218
 
-**probeset_annotation.rds**  #temporary substitute for U219_BrainArray_Locus_Symbol_IRIS.txt
+**CA209009-tumorAffy-table02-v01.csv**  #nlme Results from Scott Chasalow
 
-**Probeset_RCC_Genesets.txt** #temporary substitute for U219_BrainArray_Locus_Symbol_IRIS.txt (Supplementary table 1)
-
-
-## Pending addition by someone at BMS
+**CA209-009 Myriad RBM Measurment_Data_Unpivoted IL18.txt** #Myriad RBM IL-18 data
 
 **CM9_Patient_Annotation.txt** #Patient Annotation #Anonymized (R-friendly version of Supplementary table 2)
 
@@ -19,11 +16,10 @@
 
 
 
-## Pending release approval by BMS
+## Might be handy
 
-**CA209009-tumorAffy-table02-v01.csv**  #nlme Results
+**probeset_annotation.rds**  #probeset annotation as .rds
 
-
-**CA209-009 Myriad RBM Measurment_Data_Unpivoted IL18.txt** #Myriad RBM IL-18 data
+**Probeset_RCC_Genesets.txt** #Supplementary table 1
 
 
