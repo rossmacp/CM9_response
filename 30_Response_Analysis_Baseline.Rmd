@@ -37,7 +37,7 @@ knitr::opts_knit$set(root.dir = here::here())
 
 ```{r paths_packages}
 # Provide paths
-data_dir <- "./data/import"
+data_dir <- "./Data"
 results_dir <- "./results"
 work_dir <- "./work"
 
