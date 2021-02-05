@@ -55,7 +55,7 @@ library(ggpubr)
 
 ```{r functions}
 
-source("./code/ggplot_theme_dj_prm.R")
+source("./ggplot_theme_dj_prm.R")
 #' Custom ggplot theme with bolded text for easier legibility
 
 
