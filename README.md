@@ -6,4 +6,6 @@ This document describes the relationship of code to figures:
 
 **CM009 Manuscript Code outputs.txt**
 
-Gene expression data and annotation are available in Array Express as EMTAB-3218.
+Affymetrix gene expression data and annotation are available in ArrayExpress as E-MTAB-3218.
+
+https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-3218/
